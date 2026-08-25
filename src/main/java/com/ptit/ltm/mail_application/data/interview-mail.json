@@ -1,0 +1,34 @@
+{
+  "ops": [
+    {
+      "insert": "Chào bạn [Tên ứng viên],\nLời đầu tiên, chúng tôi xin cảm ơn bạn vì đã quan tâm đến vị trí ứng tuyển của công ty [Tên công ty]. Thông qua hồ sơ mà bạn đã gửi về, chúng tôi nhận thấy bạn có kiến thức chuyên môn phù hợp với vị trí mà chúng tôi đang tuyển.\nChúng tôi trân trọng kính mời bạn đến tham gia buổi phỏng vấn của công ty chúng tôi tại:\nThời gian: [Ngày], [Thời gian]"
+    },
+    {
+      "attributes": {
+        "list": "bullet"
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": "Địa điểm: [Địa chỉ Công ty]"
+    },
+    {
+      "attributes": {
+        "list": "bullet"
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": "Ngôn ngữ phỏng vấn: [Ngôn ngữ]"
+    },
+    {
+      "attributes": {
+        "list": "bullet"
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": "Để buổi phỏng vấn được diễn ra thuận lợi, bạn vui lòng phản hồi lại email này trong 24h kể từ khi nhận được. Mọi thắc mắc khác, bạn vui lòng liên hệ với chúng tôi qua: [Số điện thoại] - [Email công ty]\n[Tên công ty] chúc bạn sẽ có một buổi phỏng vấn thành công.\nTrân trọng,\n[Chữ ký công ty]\n"
+    }
+  ]
+}

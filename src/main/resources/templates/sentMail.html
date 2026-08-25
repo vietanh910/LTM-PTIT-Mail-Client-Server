@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Thư đã gửi</title>
+    <script src="/js/lib/tailwind/tailwind.js"></script>
+    <script src="/js/lib/tailwind/tailwind.config.js"></script>
+    <link href="/js/lib/quill/quill.bubble.css" rel="stylesheet">
+</head>
+<body>
+<div th:replace="~{fragments/header :: header}">...</div>
+<div class="flex">
+    <div th:replace="~{fragments/drawer :: drawer}">...</div>
+    <div class="min-h-screen rounded-lg flex flex-1 bg-gray-50">
+        <div class="flex-1">
+            <table
+                    class="w-full text-sm text-left text-gray-500 dark:text-gray-400"
+            >
+                <thead
+                        class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"
+                >
+                <tr>
+                    <th class="px-6 py-3 w-[10%]" scope="col">Nguời nhận</th>
+                    <th class="px-6 py-3 w-[20%]" scope="col">Tiêu đề</th>
+                    <th class="px-6 py-3 w-[55%]" scope="col">Nội dung</th>
+                    <th class="px-6 py-3 w-[15%]" scope="col">Thời gian gửi</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr
+                        class="bg-white border-b dark:bg-gray-800 dark:border-gray-700"
+                    th:attr="onClick=|getDetailMail('${email.id}')|"
+                        th:each="email : ${emails}"
+                >
+                    <th
+                            class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+                            scope="row"
+                    >
+                        <div th:text="${email.toAddress}"></div>
+                    </th>
+                    <td class="px-6 py-4">
+                        <a
+                    th:id="${email.id}"
+                    class="truncate max-w-[250px]"
+                    th:text="${email.subject}"
+                    th:attr="onClick=|getDetailMail('${email.id}')|"
+                  >
+                    Inside the Box October Product Update Inside the Box October
+                    Product Update Inside the Box October Product Update
+                  </a>
+                    </td>
+                    <td class="px-6 py-4 truncate w-[55%]">
+                        <div class="truncate max-w-[800px]"
+                             th:id="'content-' + ${email.id}"
+                             th:text="${email.content}"
+                        >
+                            LaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptop
+                        </div>
+                    </td>
+                    <td class="px-6 py-4" th:text="${email.date}">11:00 AM</td>
+                </tr>
+                </tbody>
+            </table>
+
+          
+        </div>
+      </div>
+    </div>
+
+    <script src="/js/lib/quill/quill.js"></script>
+    <script th:inline="javascript">
+      /*<![CDATA[*/
+      const emails = /*[[${emails}]]*/ []; // Use empty array as a fallback or handle the absence of emails
+      /*]]>*/
+      let quill;
+      for (let i = 0; i <= emails.length; i++) {
+        const email = emails[i];
+        quill = new Quill(`#content-${email.id}`, {
+          theme: "bubble",
+          readOnly: true,
+        });
+        quill.setContents(JSON.parse(email.content));
+        quill.root.innerHTML = `<p class="truncate w-[55%]">${
+          email.subject
+        } - ${quill.getText()}</p>`;
+      }
+
+      function getDetailMail(id) {
+        const email = emails.find((email) => email.id == id);
+        localStorage.setItem("email", JSON.stringify(email));
+
+        const author = "me";
+        localStorage.setItem("author", author);
+        window.location.href = "/detail/" + id;
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Tạo thư mới</title>
+    <script src="/js/lib/tailwind/tailwind.js"></script>
+    <script src="/js/lib/tailwind/tailwind.config.js"></script>
+</head>
+<body>
+<div th:replace="~{fragments/header :: header}">...</div>
+<div class="flex">
+    <div th:replace="~{fragments/drawer :: drawer}">...</div>
+    <div class="min-h-screen rounded-lg flex flex-col flex-1 bg-gray-50 p-10">
+        <form action="/multi_send" enctype="multipart/form-data" method="post">
+            <input id="input" name="file" type="file"/>
+            <div class="flex justify-center">
+                <button
+                        class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                        type="submit"
+                >
+                    Gửi
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+</body>
+</html>

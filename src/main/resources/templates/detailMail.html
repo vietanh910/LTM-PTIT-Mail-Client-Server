@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Chi tiết thư</title>
+    <script src="/js/lib/tailwind/tailwind.js"></script>
+    <script src="/js/lib/tailwind/tailwind.config.js"></script>
+    <link href="/js/lib/quill/quill.snow.css" rel="stylesheet" />
+  </head>
+  <body>
+    <div th:replace="~{fragments/header :: header}">...</div>
+    <div class="flex">
+      <div th:replace="~{fragments/drawer :: drawer}">...</div>
+      <div class="min-h-screen rounded-lg flex flex-col flex-1 bg-gray-50 p-10">
+        <div>
+          <div class="mb-6 relative">
+            <div
+              class="block w-fit top-[-12px] left-[20px] absolute bg-gray-50 text-sm font-medium text-gray-900 dark:text-white"
+              id="author"
+            >
+              Người nhận
+            </div>
+            <div
+              class="border-none border-gray-300 text-gray-900 text-sm bg-white rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+              id="address"
+            ></div>
+          </div>
+          <div class="mb-6 relative">
+            <span
+              class="block w-fit top-[-12px] left-[20px] absolute bg-gray-50 text-sm font-medium text-gray-900 dark:text-white"
+              >Tiêu đề</span
+            >
+            <span
+              class="border-none border-gray-300 text-gray-900 text-sm rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+              id="subject"
+            ></span>
+          </div>
+          <div class="mb-6 relative">
+            <span
+              class="block w-fit top-[-12px] left-[20px] absolute bg-gray-50 text-sm font-medium text-gray-900 dark:text-white z-10"
+              >Nội dung</span
+            >
+            <div
+              class="bg-white rounded-lg cursor-text h-[20rem] overflow-y-auto whitespace-pre-wrap"
+              id="content"
+            ></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="/js/lib/quill/quill.js"></script>
+    <script th:inline="javascript">
+      const email = JSON.parse(localStorage.getItem("email"));
+      const authorData = localStorage.getItem("author");
+      let subject = document.getElementById("subject");
+      let author = document.getElementById("author");
+      let address = document.getElementById("address");
+      let content = document.getElementById("content");
+      subject.innerHTML = email.subject;
+
+      if (authorData === "me") {
+        author.innerHTML = "Người nhận";
+        address.innerHTML = email.toAddress;
+      } else {
+        author.innerHTML = "Người gửi";
+        address.innerHTML = email.fromAddress;
+      }
+
+      const contentData = JSON.parse(email.content);
+      console.log(contentData);
+
+      const quill = new Quill("#content", {
+        theme: "snow",
+        modules: {
+          toolbar: null,
+        },
+      });
+
+      // Apply Delta to Quill instance
+      quill.setContents(contentData);
+      quill.enable(false);
+    </script>
+  </body>
+</html>

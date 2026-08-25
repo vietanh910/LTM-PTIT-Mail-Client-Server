@@ -1,0 +1,26 @@
+mailConfig:
+  gmail:
+    smtp:
+      host: smtp.gmail.com
+      auth: true
+      port: 465
+      socketFactory:
+        port: 465
+        class: javax.net.ssl.SSLSocketFactory
+
+  ptit:
+    smtp:
+      host: smtp.office365.com
+      auth: true
+      port: 587
+      socketFactory:
+        port: 587
+        class: javax.net.ssl.SSLSocketFactory
+      starttls:
+        enable: true
+
+  default:
+    smtp:
+      auth: true
+      host: 192.168.1.15
+      port: 587

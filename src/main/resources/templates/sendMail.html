@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Tạo thư mới</title>
+  <script src="/js/lib/tailwind/tailwind.js"></script>
+  <script src="/js/lib/tailwind/tailwind.config.js"></script>
+  <link href="/js/lib/quill/quill.snow.css" rel="stylesheet">
+</head>
+<body>
+<div th:replace="~{fragments/header :: header}">...</div>
+<div class="flex">
+  <div th:replace="~{fragments/drawer :: drawer}">...</div>
+  <div class="min-h-screen rounded-lg flex flex-col flex-1 bg-gray-50 p-10">
+    <form action="/send" method="post">
+      <div class="mb-6 relative">
+        <label
+                class="block w-fit top-[-12px] left-[20px] absolute bg-gray-50 text-sm font-medium text-gray-900 dark:text-white"
+                for="toAddress"
+        >Người nhận</label
+        >
+        <input
+                class="border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                id="toAddress"
+                name="toAddress"
+                placeholder="name@flowbite.com"
+                required
+                type="email"
+        />
+      </div>
+      <div class="mb-6 relative">
+        <label
+                class="block w-fit top-[-12px] left-[20px] absolute bg-gray-50 text-sm font-medium text-gray-900 dark:text-white"
+                for="subject"
+        >Tiêu đề</label
+        >
+        <input
+                class="border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                id="subject"
+                name="subject"
+                required
+                th:value="${email.subject}"
+                type="text"
+        />
+      </div>
+      <div class="mb-6 relative">
+        <label
+                class="block w-fit top-[-12px] left-[20px] absolute bg-gray-50 text-sm font-medium text-gray-900 dark:text-white"
+                for="content"
+        >Nội dung</label
+        >
+        <input name="content" type="hidden"/>
+        <div
+                class="bg-white rounded-lg cursor-text h-[20rem] overflow-y-auto"
+                id="content"
+                name="content"
+                required
+        ></div>
+      </div>
+      <div class="flex justify-center">
+        <button
+                class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                type="submit"
+        >
+          Gửi
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/js/lib/quill/quill.js"></script>
+<script th:inline="javascript">
+  const quill = new Quill('#content', {
+    theme: 'snow',
+    modules: {
+      toolbar:
+              [
+                [{'header': [1, 2, 3, 4, 5, 6, false]}],
+                [{'font': []}],
+                [{'size': ['small', false, 'large', 'huge']}],
+                ['bold', 'italic', 'underline', 'strike'],
+                ['blockquote', 'code-block'],
+                [{'align': []}],
+                [{'list': 'ordered'}, {'list': 'bullet'}],
+                [{'indent': '-1'}, {'indent': '+1'}],
+                [{'color': []}, {'background': []}],
+                ['clean']
+              ]
+    },
+  });
+  /*<![CDATA[*/
+  const email = /*[[${email}]]*/ {}; // Use empty array as a fallback or handle the absence of emails
+  /*]]>*/
+  if (email.content) {
+    quill.setContents(JSON.parse(email.content));
+  }
+  document.querySelector("#content").onclick = () => {
+    quill.focus()
+  }
+  const form = document.querySelector("form")
+  form.onsubmit = () => {
+    const content = document.querySelector("input[name='content']")
+    content.value = JSON.stringify(quill.getContents());
+    return true;
+  }
+</script>
+</body>
+</html>

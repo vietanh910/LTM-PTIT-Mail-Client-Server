@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Chọn template</title>
+    <script src="/js/lib/tailwind/tailwind.js"></script>
+    <script src="/js/lib/tailwind/tailwind.config.js"></script>
+</head>
+<body>
+<div th:replace="~{fragments/header :: header}">...</div>
+<div class="flex">
+    <div th:replace="~{fragments/drawer :: drawer}">...</div>
+    <div class="min-h-screen rounded-lg flex flex-1 bg-gray-50 p-10">
+        <div class="grid grid-cols-2 md:grid-cols-3 grid-rows-3 md:grid-rows-2 gap-4 h-3/5 w-4/5 mx-auto">
+            <div class="flex flex-col">
+                <a class="bg-white rounded-lg flex flex-1 justify-center items-center hover:border-2 hover:border-primary-600 hover:scale-105 ease-out duration-300"
+                   href="/send">
+                    <img class="w-12 h-12" src="/image/plus.png"/>
+                </a>
+                <p class="text-center m-2">Thư mới</p>
+            </div>
+            <div class="flex flex-col">
+                <a class="bg-white rounded-lg flex flex-1 justify-center items-center hover:border-2 hover:border-primary-600 hover:scale-105 ease-out duration-300"
+                   href="/multi_send">
+                    <img class="w-12 h-12" src="/image/plus.png"/>
+                </a>
+                <p class="text-center m-2">Gửi hàng loạt</p>
+            </div>
+            <div class="flex flex-col">
+                <a class="bg-[url('/image/interview.avif')] bg-cover bg-center rounded-lg flex flex-1 justify-center items-center hover:border-2 hover:border-primary-600 hover:scale-105 ease-out duration-300"
+                   href="/send?template=interview"></a>
+                <p class="text-center m-2">Mời phỏng vấn</p>
+            </div>
+            <div class="flex flex-col">
+                <a class="bg-[url('/image/announcement.jpeg')] bg-cover bg-center rounded-lg flex flex-1 justify-center items-center hover:border-2 hover:border-primary-600 hover:scale-105 ease-out duration-300"
+                   href="/send?template=announcement"></a>
+                <p class="text-center m-2">Thông báo</p>
+            </div>
+            <div class="flex flex-col">
+                <a class="bg-[url('/image/invite.jpeg')] bg-cover bg-center rounded-lg flex flex-1 justify-center items-center hover:border-2 hover:border-primary-600 hover:scale-105 ease-out duration-300"
+                   href="/send?template=invite"></a>
+                <p class="text-center m-2">Mời sự kiện</p>
+            </div>
+            <div class="flex flex-col">
+                <a class="bg-[url('/image/thanks.webp')] bg-cover bg-center rounded-lg flex flex-1 justify-center items-center hover:border-2 hover:border-primary-600 hover:scale-105 ease-out duration-300"
+                   href="/send?template=thanks"></a>
+                <p class="text-center m-2">Tri ân khách hàng</p>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

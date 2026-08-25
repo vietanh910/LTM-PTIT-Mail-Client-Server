@@ -1,0 +1,39 @@
+# Mail Client Server - System requirements and application configuration
+# ==========================================
+
+# Java runtime
+JAVA_VERSION=17.0.20.1
+JAVA_HOME=C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot
+
+# Maven build tool
+MAVEN_HOME=C:\Program Files\JetBrains\IntelliJ IDEA 2026.2.1\plugins\maven-plugin\lib\maven3
+
+# Spring Boot application runtime
+APP_PORT=8080
+APP_URL=http://localhost:8080
+
+# Default mail server configuration used by the app
+mailConfig.default.smtp.auth=true
+mailConfig.default.smtp.host=127.0.0.1
+mailConfig.default.smtp.port=587
+mailConfig.default.smtp.starttls.enable=true
+mailConfig.default.smtp.ssl.enable=false
+
+mailConfig.default.imap.host=127.0.0.1
+mailConfig.default.imap.port=143
+mailConfig.default.imap.ssl.enable=true
+
+# SMTP provider presets
+mailConfig.gmail.smtp.host=smtp.gmail.com
+mailConfig.gmail.smtp.port=465
+mailConfig.gmail.smtp.auth=true
+mailConfig.gmail.smtp.ssl.enable=true
+
+mailConfig.ptit.smtp.host=smtp.office365.com
+mailConfig.ptit.smtp.port=587
+mailConfig.ptit.smtp.auth=true
+mailConfig.ptit.smtp.starttls.enable=true
+
+# Notes:
+# - HMailServer is required for the mail login and retrieval functions to work with the local domain.
+# - Update the default SMTP/IMAP values if your local mail server runs on another host or port.

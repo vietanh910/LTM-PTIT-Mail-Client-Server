@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Trang chủ</title>
+    <script src="/js/tailwind.js"></script>
+    <script src="/js/tailwind.config.js"></script>
+  </head>
+  <body>
+    <div th:replace="~{fragments/header :: header}">...</div>
+    <div class="flex">
+      <div th:replace="~{fragments/drawer :: drawer}">...</div>
+      <div class="min-h-screen rounded-lg flex flex-1 bg-gray-50">
+        <div class="flex-1">
+          <table
+            class="w-full text-sm text-left text-gray-500 dark:text-gray-400"
+          >
+            <thead
+              class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"
+            >
+              <tr>
+                <th scope="col" class="px-6 py-3 w-[10%]">Nguời gửi</th>
+                <th scope="col" class="px-6 py-3 w-[20%]">Tiêu đề</th>
+                <th scope="col" class="px-6 py-3 w-[55%]">Nội dung</th>
+                <th scope="col" class="px-6 py-3 w-[15%]">Thời gian nhận</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                th:each="email : ${emails}"
+                class="bg-white border-b dark:bg-gray-800 dark:border-gray-700"
+              >
+                <th
+                  scope="row"
+                  class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+                >
+                  <div th:text="${email.fromAddress}"></div>
+                </th>
+                <td class="px-6 py-4">
+                  <div class="truncate max-w-[250px]" th:text="${email.subject}">
+                    Inside the Box October Product Update Inside the Box October
+                    Product Update Inside the Box October Product Update
+                  </div>
+                </td>
+                <td class="px-6 py-4 truncate w-[55%]">
+                  <div
+                    class="truncate max-w-[800px]"
+                    th:text="${email.content}"
+                  >
+                    LaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptop
+                  </div>
+                </td>
+                <td class="px-6 py-4" th:text="${email.date}">
+                  11:00 AM
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
