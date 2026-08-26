@@ -11,8 +11,9 @@
 3. [PHẦN B: Hướng dẫn chi tiết KHỞI ĐỘNG CHƯƠNG TRÌNH](#phần-b-hướng-dẫn-chi-tiết-khởi-động-chương-trình)
 4. [PHẦN C: Hướng dẫn dành cho MÁY KHÁCH (Client)](#phần-c-dành-cho-máy-khách-client)
 5. [PHẦN D: Hướng dẫn kiểm tra trên CÙNG 1 MÁY TÍNH](#phần-d-hướng-dẫn-test-trên-cùng-1-máy-tính)
-6. [PHẦN E: Bảng tổng hợp các vị trí IP & Tài khoản cần thay đổi](#phần-e-bảng-tổng-hợp-các-file-cấu-hình-ip--tài-khoản)
-7. [PHẦN F: Xử lý các lỗi thường gặp khi khởi động](#phần-f-xử-lý-các-lỗi-thường-gặp-khi-khởi-động)
+6. [PHẦN E: Hướng dẫn CẤU HÌNH BỘ LỌC SPAM (THƯ RÁC)](#phần-e-hướng-dẫn-cấu-hình-bộ-lọc-spam-thư-rác)
+7. [PHẦN F: Bảng tổng hợp các vị trí IP & Tài khoản cần thay đổi](#phần-f-bảng-tổng-hợp-các-file-cấu-hình-ip--tài-khoản)
+8. [PHẦN G: Xử lý các lỗi thường gặp khi khởi động](#phần-g-xử-lý-các-lỗi-thường-gặp-khi-khởi-động)
 
 ---
 
@@ -77,22 +78,16 @@
 
 ### Bước 3: Lấy địa chỉ IP LAN của Máy Chủ
 1. Mở cửa sổ **Command Prompt (CMD)** hoặc **PowerShell** trên Máy Chủ.
-2. Gõ lệnh:
-   ```cmd
-   ipconfig
-   ```
+2. Gõ lệnh: `ipconfig`
 3. Tìm dòng **`IPv4 Address`** của card mạng WiFi hoặc Ethernet đang kết nối (Ví dụ: `192.168.1.15`).
 
 ---
 
 ### Bước 4: Mở cổng Tường lửa (Windows Firewall) trên Máy Chủ
-Để các máy khác trong mạng LAN truy cập được:
 1. Mở Start Menu -> Tìm **Windows Defender Firewall with Advanced Security**.
 2. Chọn **Inbound Rules** -> Chọn **New Rule...**:
-   * Chọn **Port** -> Nhấn **Next**.
-   * Nhập các cổng: `8080, 25, 143, 587` -> Nhấn **Next**.
-   * Chọn **Allow the connection** -> Nhấn **Next** liên tục -> Đặt tên `Mail_LTM_Ports` -> Nhấn **Finish**.
-*(Hoặc trong lúc kiểm tra đồ án nhanh, bạn có thể tạm thời tắt Windows Firewall).*
+   * Chọn **Port** -> Nhập các cổng: `8080, 25, 143, 587` -> Chọn **Allow the connection** -> Đặt tên `Mail_LTM_Ports` -> Nhấn **Finish**.
+*(Hoặc trong lúc demo đồ án nhanh, bạn có thể tạm thời tắt Windows Firewall).*
 
 ---
 
@@ -100,52 +95,22 @@
 
 ### Cách 1: Khởi động bằng IntelliJ IDEA (Khuyên dùng - Đơn giản nhất)
 1. Mở thư mục dự án **`LTM-PTIT-Mail-Client-Server`** trong **IntelliJ IDEA**.
-2. **Kiểm tra cấu hình Java (JDK 17)**:
-   * Vào menu `File` -> `Project Structure` -> Mục `Project`.
-   * Đảm bảo **SDK** đang chọn là **Java 17** (hoặc `17 Oracle OpenJDK` / `17 Microsoft OpenJDK`).
-3. **Đồng bộ Maven**:
-   * Mở tab **Maven** ở góc phải màn hình -> Nhấn biểu tượng **Reload All Maven Projects** 🔄 để IntelliJ tải đầy đủ các thư viện.
+2. **Kiểm tra Java 17**: Vào `File` -> `Project Structure` -> Mục `Project` -> Đảm bảo **SDK** là **Java 17**.
+3. **Đồng bộ Maven**: Mở tab **Maven** ở góc phải màn hình -> Nhấn biểu tượng **Reload All Maven Projects** 🔄.
 4. **Khởi chạy ứng dụng**:
-   * Mở đường dẫn file: `src` -> `main` -> `java` -> `com.ptit.ltm.mail_application` -> Mở file [**`MailApplication.java`**](src/main/java/com/ptit/ltm/mail_application/MailApplication.java).
-   * Nhấn chuột phải vào vùng soạn thảo -> Chọn **`Run 'MailApplication'`**  
-     *(hoặc bấm vào biểu tượng tam giác màu xanh lá cây ▶️ nằm cạnh dòng `public class MailApplication`)*.
-5. **Kiểm tra console khởi động thành công**:
-   * Ở cửa sổ Run phía dưới, khi thấy xuất hiện dòng chữ:
-     ```
-     Tomcat started on port(s): 8080 (http) with context path ''
-     Started MailApplication in X.XXX seconds
-     ```
-   * Nghĩa là ứng dụng đã khởi động hoàn tất!
+   * Mở file [**`MailApplication.java`**](src/main/java/com/ptit/ltm/mail_application/MailApplication.java).
+   * Nhấn chuột phải -> Chọn **`Run 'MailApplication'`** *(hoặc bấm tam giác xanh ▶️)*.
+5. Khi console xuất hiện dòng `Started MailApplication in X.XXX seconds (process running on port 8080)` là thành công!
 
 ---
 
-### Cách 2: Khởi động bằng Terminal / Command Prompt (CMD)
-Nếu không dùng IntelliJ, bạn có thể chạy bằng dòng lệnh:
-1. Mở cửa sổ **CMD** hoặc **PowerShell** tại thư mục gốc của dự án.
-2. Chạy lệnh:
-   ```bash
-   mvn spring-boot:run
-   ```
-3. Hoặc đóng gói thành file `.jar` và chạy:
-   ```bash
-   mvn clean package -DskipTests
-   java -jar target/mail-application-0.0.1-SNAPSHOT.jar
-   ```
-
----
-
-### Cách 3: Truy cập vào giao diện Web Mail sau khi khởi động
-1. Mở trình duyệt Web (Google Chrome / Microsoft Edge / Cốc Cốc).
-2. Nhập địa chỉ:
-   ```
-   http://localhost:8080
-   ```
-   *(Hệ thống sẽ tự động chuyển hướng đến trang đăng nhập `http://localhost:8080/login`)*.
-3. Đăng nhập bằng một trong các tài khoản có sẵn:
+### Cách 2: Truy cập Web Mail sau khi khởi động
+1. Mở trình duyệt Web (Chrome / Edge).
+2. Nhập địa chỉ: **`http://localhost:8080`** *(tự động chuyển hướng tới `/login`)*.
+3. Đăng nhập bằng tài khoản:
    * **Tài khoản 1**: `user1@domain1.com` / Mật khẩu: `user1`
    * **Tài khoản 2**: `user2@domain1.com` / Mật khẩu: `user2`
-   * **Tài khoản 3**: `admin@domain1.com` / Mật khẩu: `admin123`
-   * Hoặc bấm vào **Đăng ký** để tạo một tài khoản mới bất kỳ!
+   * **Tài khoản Admin**: `admin@domain1.com` / Mật khẩu: `admin123`
 
 ---
 
@@ -154,97 +119,79 @@ Nếu không dùng IntelliJ, bạn có thể chạy bằng dòng lệnh:
 > ⚠️ **LƯU Ý CỰC KỲ QUAN TRỌNG:**
 > Máy Khách (Client) **TUYỆT ĐỐI KHÔNG CẦN CÀI hMailServer** và **KHÔNG CẦN CÀI MySQL**.
 
-### Cách 1: Sử dụng giao diện Web Mail trên trình duyệt (Đơn giản nhất - Khuyên dùng)
+### Cách 1: Dùng qua trình duyệt Web (Khuyên dùng)
 1. Kết nối máy Client vào **cùng mạng WiFi/LAN** với Máy Chủ.
-2. Mở trình duyệt web (**Google Chrome / Microsoft Edge**).
-3. Nhập đường dẫn:
-   ```
-   http://[IP_CỦA_MÁY_CHỦ]:8080
-   ```
-   *Ví dụ: `http://192.168.1.15:8080` (hoặc `http://192.168.1.15:8080/login`)*.
-4. Đăng nhập với tài khoản:
-   * **Tài khoản**: `user2@domain1.com` *(hoặc `user2`)*
-   * **Mật khẩu**: `user2`
-5. Bạn có thể gửi, nhận thư, đính kèm file trực tiếp trên trình duyệt như dùng Gmail!
-
----
-
-### Cách 2: Nếu Máy Client cũng muốn mở source code Java trong IntelliJ
-Nếu bạn gửi file source code cho bạn bè và bạn bè muốn tự chạy code Java trên máy của họ:
-1. Mở source code trong IntelliJ trên máy Client.
-2. Mở file **`MailApplicationConfiguration.java`** trên máy Client và sửa IP:
-   ```java
-   // Đổi từ 127.0.0.1 thành IP của Máy Chủ (ví dụ: 192.168.1.15)
-   props.put("mail.smtp.host", "192.168.1.15");
-   properties.put("mail.imap.host", "192.168.1.15");
-   ```
-3. Mở file **`application.yml`** trên máy Client và sửa:
-   ```yaml
-   spring:
-     datasource:
-       # Trỏ về database của máy chủ nếu muốn dùng chung database:
-       url: jdbc:mysql://192.168.1.15:3306/mail_db?...
-   ```
-4. Chạy `MailApplication.java` trên máy Client và truy cập `http://localhost:8080`.
+2. Mở trình duyệt web gõ: `http://[IP_MÁY_CHỦ]:8080` *(Ví dụ: `http://192.168.1.15:8080`)*.
+3. Đăng nhập: `user2@domain1.com` / `user2`. Sử dụng đầy đủ tính năng như Gmail!
 
 ---
 
 ## PHẦN D: HƯỚNG DẪN TEST TRÊN CÙNG 1 MÁY TÍNH
 
-Nếu bạn chỉ có 1 máy tính và muốn tự kiểm tra 2 người gửi/nhận cho nhau:
-
-1. **Người dùng 1 (User 1):**
-   * Mở trình duyệt Chrome (tab thông thường).
-   * Vào `http://localhost:8080/login`.
-   * Đăng nhập: `user1@domain1.com` / `user1`.
-
-2. **Người dùng 2 (User 2):**
-   * Nhấn `Ctrl + Shift + N` để mở **Cửa sổ Ẩn danh (Incognito)** trên Chrome.
-   * Vào `http://localhost:8080/login`.
-   * Đăng nhập: `user2@domain1.com` / `user2`.
-
-3. **Thực hiện kiểm tra các tính năng:**
-   * **Gửi thư & Đính kèm file**: Từ tab User 1, bấm **Soạn thư** -> Nhập người nhận `user2@domain1.com` -> Đính kèm 1 file PDF/ảnh bất kỳ -> Bấm **Gửi**.
-   * **Nhận thư & Trả lời (Reply)**: Sang tab User 2 -> Vào **Hộp thư đến** -> Nhấp vào thư vừa nhận -> Bấm nút **Trả lời thư** -> Gửi ngược lại cho User 1.
-   * **Kiểm tra lọc Spam tự động**: Soạn thư có chứa từ khóa `trúng thưởng` hoặc `khuyến mãi sốc` -> Khi gửi tới User 2, thư sẽ tự động rơi vào mục **Spam** thay vì Hộp thư đến.
-   * **Gửi hàng loạt**: Vào mục **Gửi hàng loạt** -> Chọn file Excel danh sách -> Bấm **Gửi**.
+1. **User 1**: Mở Chrome tab thường vào `http://localhost:8080/login` -> Đăng nhập `user1@domain1.com` / `user1`.
+2. **User 2**: Nhấn `Ctrl + Shift + N` mở **Cửa sổ Ẩn danh (Incognito)** vào `http://localhost:8080/login` -> Đăng nhập `user2@domain1.com` / `user2`.
+3. **Thực hiện test**:
+   * **Soạn thư & Đính kèm file**: User 1 gửi tới `user2@domain1.com`, đính kèm file PDF/ảnh.
+   * **Nhận thư & Trả lời**: User 2 vào Hộp thư đến -> Xem chi tiết -> Nhấn **Trả lời thư (Reply)**.
+   * **Lọc Spam**: Soạn thư có chữ `trúng thưởng` -> Bên nhận sẽ thấy thư tự động rơi vào mục **Spam**.
 
 ---
 
-## PHẦN E: BẢNG TỔNG HỢP CÁC FILE CẤU HÌNH IP & TÀI KHOẢN
+## PHẦN E: HƯỚNG DẪN CẤU HÌNH BỘ LỌC SPAM (THƯ RÁC)
 
-Khi bạn chia sẻ dự án hoặc chuyển đổi mạng, đây là các vị trí cần lưu ý:
+Hệ thống hỗ trợ 2 cơ chế cấu hình quy tắc lọc spam:
+
+### 1. Cấu hình tự động qua MySQL Database (Bảng `spam_rules`)
+`SpamFilterService` trong mã nguồn Java sẽ tự động đối soát nội dung/người gửi của email với bảng `spam_rules` để chuyển thư vào thư mục SPAM.
+* **`KEYWORD_BLOCK`**: Chặn theo từ khóa trong tiêu đề/nội dung.
+* **`DOMAIN_BLOCK`**: Chặn toàn bộ thư gửi từ domain rác.
+* **`SENDER_BLOCK`**: Chặn theo địa chỉ email cụ thể.
+
+👉 **Thêm quy tắc mới bằng câu lệnh SQL trong MySQL Workbench:**
+```sql
+USE mail_db;
+
+-- Chặn thư có từ khóa lừa đảo
+INSERT INTO spam_rules (rule_type, pattern, action, is_active, description)
+VALUES ('KEYWORD_BLOCK', 'vay tiền nhanh', 'MOVE_TO_SPAM', 1, 'Chặn thư tín dụng đen');
+
+-- Chặn toàn bộ email từ domain rác
+INSERT INTO spam_rules (rule_type, pattern, action, is_active, description)
+VALUES ('DOMAIN_BLOCK', 'quangcao-247.net', 'MOVE_TO_SPAM', 1, 'Chặn domain dịch vụ quảng cáo');
+```
+
+---
+
+### 2. Cấu hình Quy tắc Spam trên hMailServer Administrator
+1. Mở **hMailServer Administrator** -> Chọn mục **`Rules`** -> Bấm **`Add...`**
+2. **Tab General**: Đặt tên (ví dụ: `Auto Filter Spam Keyword`).
+3. **Tab Criteria** *(Điều kiện)*: Bấm **`Add...`** -> Field: Chọn `Subject` hoặc `Body` -> Comparison type: Chọn `Contains` -> Value: Nhập từ khóa (ví dụ: `trúng thưởng`) -> Bấm **OK**.
+4. **Tab Actions** *(Hành động)*: Bấm **`Add...`** -> Action: Chọn `Move to IMAP folder` -> Gõ: `SPAM` -> Bấm **OK**.
+5. Nhấn **`Save`** để kích hoạt quy tắc.
+
+---
+
+## PHẦN F: BẢNG TỔNG HỢP CÁC FILE CẤU HÌNH IP & TÀI KHOẢN
 
 | Tên File | Vị trí cần chỉnh sửa | Ý nghĩa cấu hình | Giá trị mặc định (Local) | Khi chạy mạng LAN đa máy |
 | :--- | :--- | :--- | :--- | :--- |
-| [`application.yml`](src/main/resources/application.yml) | `spring.datasource.url` | Địa chỉ kết nối MySQL Database | `localhost:3306/mail_db` | `localhost:3306/mail_db` (trên Server) hoặc `IP_Server:3306/mail_db` (trên Client) |
-| [`application.yml`](src/main/resources/application.yml) | `spring.datasource.password` | Mật khẩu tài khoản MySQL `root` | `123456` | Thay đổi theo mật khẩu MySQL của máy bạn |
-| [`MailApplicationConfiguration.java`](src/main/java/com/ptit/ltm/mail_application/configuration/MailApplicationConfiguration.java) | Dòng 39: `mail.smtp.host` | Địa chỉ máy chủ SMTP gửi mail | `"127.0.0.1"` | `"127.0.0.1"` (trên Server) hoặc `"IP_MÁY_SERVER"` (trên Client) |
-| [`MailApplicationConfiguration.java`](src/main/java/com/ptit/ltm/mail_application/configuration/MailApplicationConfiguration.java) | Dòng 60: `mail.imap.host` | Địa chỉ máy chủ IMAP nhận mail | `"127.0.0.1"` | `"127.0.0.1"` (trên Server) hoặc `"IP_MÁY_SERVER"` (trên Client) |
+| [`application.yml`](src/main/resources/application.yml) | `spring.datasource.url` | Địa chỉ kết nối MySQL Database | `localhost:3306/mail_db` | `localhost:3306/mail_db` (Server) |
+| [`application.yml`](src/main/resources/application.yml) | `spring.datasource.password` | Mật khẩu tài khoản MySQL `root` | `123456` | Mật khẩu MySQL máy bạn |
+| [`MailApplicationConfiguration.java`](src/main/java/com/ptit/ltm/mail_application/configuration/MailApplicationConfiguration.java) | Dòng 39: `mail.smtp.host` | Địa chỉ máy chủ SMTP gửi mail | `"127.0.0.1"` | `"IP_MÁY_SERVER"` (nếu chạy code trên Client) |
+| [`MailApplicationConfiguration.java`](src/main/java/com/ptit/ltm/mail_application/configuration/MailApplicationConfiguration.java) | Dòng 60: `mail.imap.host` | Địa chỉ máy chủ IMAP nhận mail | `"127.0.0.1"` | `"IP_MÁY_SERVER"` (nếu chạy code trên Client) |
 | [`schema.sql`](schema.sql) | Toàn bộ file | Cấu trúc bảng Database MySQL | Cố định | Chạy 1 lần trên MySQL Server |
-| [`data.sql`](data.sql) | Danh sách `INSERT INTO users` | Tài khoản đăng nhập ban đầu | `user1/user1`, `user2/user2` | Chạy 1 lần sau khi chạy `schema.sql` |
+| [`data.sql`](data.sql) | Danh sách `INSERT IGNORE` | Dữ liệu mẫu phong phú | `user1`, `user2`, `admin`... | Chạy 1 lần sau khi chạy `schema.sql` |
 
 ---
 
-## PHẦN F: XỬ LÝ CÁC LỖI THƯỜNG GẶP KHI KHỞI ĐỘNG
+## PHẦN G: XỬ LÝ CÁC LỖI THƯỜNG GẶP KHI KHỞI ĐỘNG
 
-### 1. Lỗi cổng `8080` bị chiếm dụng (`Port 8080 was already in use`)
-* **Nguyên nhân**: Có một tiến trình hoặc lần chạy trước của Spring Boot chưa tắt hẳn.
-* **Cách khắc phục**:
-  1. Mở PowerShell / CMD chạy lệnh:
-     ```cmd
-     netstat -ano | findstr :8080
-     ```
-  2. Xem số PID ở cột cuối cùng (ví dụ `1234`) và tắt tiến trình:
-     ```cmd
-     taskkill /F /PID 1234
-     ```
-  3. Khởi động lại ứng dụng trong IntelliJ.
+### 1. Lỗi cổng `8080` bị chiếm (`Port 8080 was already in use`)
+* Mở PowerShell chạy: `netstat -ano | findstr :8080`
+* Tắt tiến trình bằng PID (ví dụ PID 1234): `taskkill /F /PID 1234`
 
-### 2. Lỗi kết nối MySQL (`Access denied for user 'root'@'localhost'`)
-* **Nguyên nhân**: Mật khẩu root của MySQL trên máy bạn khác với `123456`.
-* **Cách khắc phục**: Mở file [`application.yml`](src/main/resources/application.yml), sửa dòng `password: 123456` thành mật khẩu MySQL chính xác của máy bạn.
+### 2. Lỗi kết nối MySQL (`Access denied for user 'root'`)
+* Sửa dòng `password: 123456` trong [`application.yml`](src/main/resources/application.yml) thành mật khẩu MySQL trên máy của bạn.
 
-### 3. Lỗi không gửi được mail qua hMailServer (`Connection refused` hoặc `Connect failed`)
-* **Nguyên nhân**: Dịch vụ hMailServer chưa được khởi động trên Windows.
-* **Cách khắc phục**: Mở Start Menu -> Tìm **Services** -> Tìm dịch vụ **hMailServer** -> Nhấn chuột phải chọn **Start** (hoặc **Restart**).
+### 3. Lỗi không gửi được mail (`Connection refused` hoặc `Connect failed`)
+* Mở Start Menu -> Tìm **Services** -> Chuột phải vào dịch vụ **hMailServer** -> Chọn **Start** (hoặc **Restart**).

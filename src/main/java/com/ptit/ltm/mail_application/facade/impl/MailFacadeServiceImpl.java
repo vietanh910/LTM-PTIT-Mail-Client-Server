@@ -100,12 +100,32 @@ public class MailFacadeServiceImpl {
     Session session = sessionService.getReceiveMailSession(username);
     String mailStoreType = username.contains("gmail") ? "imaps" : "imap";
 
-    List<Email> rawEmails = mailService.getInBoxMail(username, password, mailStoreType, session);
-    
-    // Tự động lọc ra những email không phải spam dựa trên rules trong MySQL
-    return rawEmails.stream()
-            .filter(email -> !spamFilterService.isSpam(email))
-            .collect(Collectors.toList());
+    List<Email> emails = new ArrayList<>();
+    try {
+      List<Email> rawEmails = mailService.getInBoxMail(username, password, mailStoreType, session);
+      if (rawEmails != null && !rawEmails.isEmpty()) {
+        emails.addAll(rawEmails.stream()
+                .filter(email -> !spamFilterService.isSpam(email))
+                .collect(Collectors.toList()));
+      }
+    } catch (Exception e) {
+      log.warn("IMAP getInbox failed or empty: {}", e.getMessage());
+    }
+
+    // Nếu IMAP chưa có thư (hòm thư mới), nạp thêm các thư mẫu từ MySQL Database
+    if (emails.isEmpty()) {
+      List<EmailLog> dbLogs = emailLogRepository.findByRecipientOrderByCreatedAtDesc(username);
+      if (dbLogs.isEmpty()) {
+        dbLogs = emailLogRepository.findByMailTypeOrderByCreatedAtDesc(MailType.INBOX);
+      }
+      for (EmailLog dbLog : dbLogs) {
+        if (!dbLog.isSpam()) {
+          emails.add(convertLogToEmail(dbLog));
+        }
+      }
+    }
+
+    return emails;
   }
 
   public List<Email> listSentMail(String username, String password) {
@@ -114,7 +134,28 @@ public class MailFacadeServiceImpl {
     Session session = sessionService.getReceiveMailSession(username);
     String mailStoreType = username.contains("gmail") ? "imaps" : "imap";
 
-    return mailService.getSentMail(username, password, mailStoreType, session);
+    List<Email> emails = new ArrayList<>();
+    try {
+      List<Email> sent = mailService.getSentMail(username, password, mailStoreType, session);
+      if (sent != null && !sent.isEmpty()) {
+        emails.addAll(sent);
+      }
+    } catch (Exception e) {
+      log.warn("IMAP getSent failed or empty: {}", e.getMessage());
+    }
+
+    // Nếu IMAP chưa có thư đã gửi, nạp từ bảng email_logs trong MySQL
+    if (emails.isEmpty()) {
+      List<EmailLog> dbLogs = emailLogRepository.findBySenderOrderByCreatedAtDesc(username);
+      if (dbLogs.isEmpty()) {
+        dbLogs = emailLogRepository.findByMailTypeOrderByCreatedAtDesc(MailType.SENT);
+      }
+      for (EmailLog dbLog : dbLogs) {
+        emails.add(convertLogToEmail(dbLog));
+      }
+    }
+
+    return emails;
   }
 
   public List<Email> listSpamMail(String username, String password) {
@@ -123,22 +164,53 @@ public class MailFacadeServiceImpl {
     Session session = sessionService.getReceiveMailSession(username);
     String mailStoreType = username.contains("gmail") ? "imaps" : "imap";
 
-    // 1. Thư từ thư mục SPAM của Mail Server (nếu có)
-    List<Email> serverSpam = mailService.getSpamMail(username, password, mailStoreType, session);
+    List<Email> allSpam = new ArrayList<>();
+    try {
+      // 1. Thư từ thư mục SPAM của Mail Server (nếu có)
+      List<Email> serverSpam = mailService.getSpamMail(username, password, mailStoreType, session);
+      if (serverSpam != null) {
+        allSpam.addAll(serverSpam);
+      }
 
-    // 2. Thư từ INBOX nhưng vi phạm quy tắc lọc spam trong MySQL
-    List<Email> rawInbox = mailService.getInBoxMail(username, password, mailStoreType, session);
-    List<Email> filteredSpam = rawInbox.stream()
-            .filter(spamFilterService::isSpam)
-            .collect(Collectors.toList());
+      // 2. Thư từ INBOX nhưng vi phạm quy tắc lọc spam trong MySQL
+      List<Email> rawInbox = mailService.getInBoxMail(username, password, mailStoreType, session);
+      if (rawInbox != null) {
+        List<Email> filteredSpam = rawInbox.stream()
+                .filter(spamFilterService::isSpam)
+                .collect(Collectors.toList());
+        for (Email email : filteredSpam) {
+          if (allSpam.stream().noneMatch(e -> e.getSubject().equals(email.getSubject()) && e.getFromAddress().equals(email.getFromAddress()))) {
+            allSpam.add(email);
+          }
+        }
+      }
+    } catch (Exception e) {
+      log.warn("IMAP listSpam failed: {}", e.getMessage());
+    }
 
-    List<Email> allSpam = new ArrayList<>(serverSpam);
-    for (Email email : filteredSpam) {
-      if (allSpam.stream().noneMatch(e -> e.getSubject().equals(email.getSubject()) && e.getFromAddress().equals(email.getFromAddress()))) {
-        allSpam.add(email);
+    // Nếu chưa có thư spam từ IMAP, nạp các thư spam mẫu từ MySQL Database
+    if (allSpam.isEmpty()) {
+      List<EmailLog> dbLogs = emailLogRepository.findByMailTypeOrderByCreatedAtDesc(MailType.SPAM);
+      for (EmailLog dbLog : dbLogs) {
+        allSpam.add(convertLogToEmail(dbLog));
       }
     }
+
     return allSpam;
+  }
+
+  private Email convertLogToEmail(EmailLog log) {
+    java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    String dateStr = log.getCreatedAt() != null ? log.getCreatedAt().format(formatter) : "";
+    return Email.of(
+            log.getMessageUuid() != null ? log.getMessageUuid() : java.util.UUID.randomUUID().toString(),
+            log.getSender(),
+            log.getRecipient(),
+            log.getSubject() != null ? log.getSubject() : "(Không có tiêu đề)",
+            log.getContent() != null ? log.getContent() : "",
+            dateStr,
+            false
+    );
   }
 
   public List<Email> fakeData() {

@@ -1,4 +1,4 @@
-﻿package com.ptit.ltm.mail_application.repository;
+package com.ptit.ltm.mail_application.repository;
 
 import com.ptit.ltm.mail_application.entity.EmailTemplate;
 import org.springframework.data.jpa.repository.JpaRepository;

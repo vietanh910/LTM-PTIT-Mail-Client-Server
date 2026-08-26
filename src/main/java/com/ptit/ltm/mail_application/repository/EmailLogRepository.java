@@ -1,4 +1,4 @@
-﻿package com.ptit.ltm.mail_application.repository;
+package com.ptit.ltm.mail_application.repository;
 
 import com.ptit.ltm.mail_application.entity.EmailLog;
 import com.ptit.ltm.mail_application.entity.MailType;

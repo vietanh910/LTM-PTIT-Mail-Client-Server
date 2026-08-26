@@ -1,4 +1,4 @@
-﻿package com.ptit.ltm.mail_application.service.impl;
+package com.ptit.ltm.mail_application.service.impl;
 
 import com.ptit.ltm.mail_application.entity.RuleType;
 import com.ptit.ltm.mail_application.entity.SpamRule;

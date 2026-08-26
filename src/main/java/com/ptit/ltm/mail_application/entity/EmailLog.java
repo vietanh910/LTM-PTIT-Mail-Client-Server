@@ -1,4 +1,4 @@
-﻿package com.ptit.ltm.mail_application.entity;
+package com.ptit.ltm.mail_application.entity;
 
 import jakarta.persistence.*;
 import lombok.*;

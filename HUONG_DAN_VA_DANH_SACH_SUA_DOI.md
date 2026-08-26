@@ -1,77 +1,74 @@
-﻿# TỔNG KẾT KHẮC PHỤC & HƯỚNG DẪN VẬN HÀNH HỆ THỐNG LTM MAIL CLIENT - SERVER
+﻿# 📑 NHẬT KÝ CHI TIẾT CÁC CẢI TIẾN & KHẮC PHỤC HỆ THỐNG LTM MAIL CLIENT - SERVER
 
 ---
 
-## I. CƠ SỞ DỮ LIỆU MYSQL & HỆ THỐNG ENTITY (MỚI TÍCH HỢP)
+## I. TỔNG QUAN CÁC CÔNG VIỆC ĐÃ HOÀN THÀNH
 
-Hệ thống đã được tích hợp cơ sở dữ liệu **MySQL Server** (`mail_db`) thông qua **Spring Data JPA & Hibernate**:
-* **Database Name**: `mail_db` (UTF-8 MB4)
-* **Cổng kết nối**: `3306` (User: `root`, Mật khẩu: `123456`)
-
-### Danh sách các Entity được thiết kế đầy đủ:
-1. **`User` (`users`)**:
-   - Quản lý tài khoản người dùng: `username`, `password`, `fullName`, `email`, `phoneNumber`, `address`, `role`, `status`, `createdAt`, `updatedAt`.
-   - Kết nối với form Đăng ký (`/register`) và Đăng nhập (`/login`).
-2. **`SpamRule` (`spam_rules`)**:
-   - Quản lý quy tắc lọc thư rác theo đúng yêu cầu đề tài:
-     - `DOMAIN_BLOCK`: Chặn thư theo domain gửi (ví dụ: `spam-domain.com`).
-     - `SENDER_BLOCK`: Chặn thư theo địa chỉ email nguồn.
-     - `KEYWORD_BLOCK`: Chặn thư dựa trên từ khóa trong tiêu đề/nội dung (ví dụ: `trúng thưởng`, `khuyến mãi sốc`).
-3. **`EmailLog` (`email_logs`)**:
-   - Lưu vết lịch sử gửi/nhận email trong database: `sender`, `recipient`, `subject`, `content`, `mailType` (INBOX/SENT/SPAM), `hasAttachment`, `attachmentName`, `createdAt`.
-4. **`Contact` (`contacts`)**:
-   - Quản lý danh bạ liên hệ cá nhân của người dùng.
-5. **`EmailTemplate` (`email_templates`)**:
-   - Lưu trữ các mẫu thư động (`interview`, `announcement`, `invite`, `thanks`).
-
-### Khởi tạo dữ liệu tự động (`DataInitService`):
-Khi ứng dụng khởi chạy lần đầu, `DataInitService` sẽ tự động tạo sẵn:
-* 2 tài khoản mẫu: `user1` (pass: `user1`, email: `user1@domain1.com`) và `user2` (pass: `user2`, email: `user2@domain1.com`).
-* 3 quy tắc lọc spam mẫu trong database.
+### 1. Nâng cấp Nền tảng Spring Boot 3 & Jakarta EE (`pom.xml`)
+* Loại bỏ các thư viện cũ không tương thích: `javax.mail:mail:1.4.7`, `javax.validation:validation-api:2.0.1.Final`, `springdoc-openapi-ui:1.7.0`.
+* Bổ sung thư viện email chuẩn Spring Boot 3: `org.eclipse.angus:jakarta.mail`.
+* Bổ sung cơ sở dữ liệu: `spring-boot-starter-data-jpa`, `com.mysql:mysql-connector-j`.
+* Chuyển đổi toàn bộ mã nguồn từ `javax.*` sang `jakarta.*` (`jakarta.mail.*`, `jakarta.activation.*`, `jakarta.validation.*`).
 
 ---
 
-## II. TỔNG HỢP CÁC CẢI TIẾN & KHẮC PHỤC ĐÃ THỰC HIỆN
-
-### 1. Chuẩn hóa Dependencies & Nền tảng Spring Boot 3 (`pom.xml`)
-* Loại bỏ các thư viện cũ gây xung đột: `javax.mail:mail:1.4.7`, `javax.validation:validation-api:2.0.1.Final`, `springdoc-openapi-ui:1.7.0`.
-* Thêm `spring-boot-starter-data-jpa` và `mysql-connector-j`.
-* Bổ sung `org.eclipse.angus:jakarta.mail` hỗ trợ đầy đủ bộ giao thức **SMTP**, **IMAP**, **IMAPS** trên nền Spring Boot 3.
-* Chuyển đổi toàn bộ imports sang `jakarta.*`.
-
-### 2. Xử lý & Khắc phục Lỗi Backend / Logic
-* **Bộ lọc Spam thông minh (`SpamFilterService`)**: Tự động đối soát các email nhận từ IMAP với bộ quy tắc trong bảng `spam_rules` để chuyển thư vào mục Spam.
-* **Ghi nhật ký gửi thư**: Tự động lưu bản ghi vào bảng `email_logs` mỗi khi gửi thư thành công.
-* **Trích xuất Email & Đọc nội dung an toàn**: Hỗ trợ Plain text, HTML và Multipart message (thư có file đính kèm), phòng tránh lỗi Null Pointer.
-* **Đọc tài nguyên Template bằng `ClassPathResource`**: Ổn định khi đóng gói thành file JAR.
-* **Sửa các Endpoint Controller**: Sửa `/spam` trả về đúng view `spamMail`, thêm `/logout` và xử lý form `POST /register` lưu trực tiếp vào MySQL.
-
-### 3. Khắc phục Lỗi Giao diện & JavaScript (Frontend Thymeleaf)
-* **Gửi file đính kèm trên Web (`sendMail.html`)**: Thêm `enctype="multipart/form-data"` và ô chọn file đính kèm.
-* **Tính năng Trả lời thư (`detailMail.html`)**: Thêm nút **Trả lời thư (Reply)** tự động điền email nhận và tiền tố `Re:`.
-* **Khắc phục lỗi Crash JavaScript**: Sửa lỗi off-by-one trong vòng lặp JavaScript, bọc `JSON.parse` an toàn cho Quill Editor trong tất cả các trang (`home.html`, `sentMail.html`, `spamMail.html`, `detailMail.html`).
-* **Header**: Hiển thị chính xác email tài khoản đang đăng nhập.
+### 2. Thiết kế & Khởi tạo Toàn bộ Hệ thống MySQL Database
+* Đã cấu hình kết nối Datasource và Hibernate `ddl-auto: update` trong `application.yml`.
+* Tạo đầy đủ 5 Entity trong package `com.ptit.ltm.mail_application.entity`:
+  1. **`User`** (Bảng `users`): Quản lý tài khoản, mật khẩu, họ tên, email, số điện thoại, địa chỉ, quyền hạn.
+  2. **`SpamRule`** (Bảng `spam_rules`): Quản lý quy tắc chặn spam theo từ khóa (`KEYWORD_BLOCK`), tên miền (`DOMAIN_BLOCK`), email người gửi (`SENDER_BLOCK`).
+  3. **`EmailLog`** (Bảng `email_logs`): Ghi nhật ký email gửi/nhận, file đính kèm và phân loại thư.
+  4. **`Contact`** (Bảng `contacts`): Quản lý danh bạ liên hệ cá nhân.
+  5. **`EmailTemplate`** (Bảng `email_templates`): Quản lý các mẫu thư soạn sẵn.
+* Tạo đầy đủ các JPA Repositories và Services:
+  - `UserRepository`, `SpamRuleRepository`, `EmailLogRepository`, `ContactRepository`, `EmailTemplateRepository`.
+  - `UserService`, `SpamFilterService`, `DataInitService`.
 
 ---
 
-## III. HƯỚNG DẪN CÀI ĐẶT & CHẠY THỬ NGHIỆM HỆ THỐNG
+### 3. Tách File Khởi tạo Database & Dữ liệu Mẫu (Dùng để nạp vào MySQL)
+* [**`schema.sql`**](schema.sql): File chứa các câu lệnh `CREATE DATABASE` và `CREATE TABLE` (5 bảng).
+* [**`data.sql`**](data.sql): File nạp dữ liệu mẫu phong phú bằng `INSERT IGNORE INTO` (8 users, 10 spam rules, 8 contacts, 4 templates, 8 email logs) đảm bảo không bị lỗi trùng lặp dữ liệu.
+* Xử lý bảng mã chuẩn UTF-8 (`utf8mb4_unicode_ci`) không bị lỗi font tiếng Việt.
 
-### Bước 1: Khởi động MySQL Database
-* Database `mail_db` đã được tạo sẵn trên MySQL Server của bạn (Port `3306`, User: `root`, Pass: `123456`).
-* Hibernate sẽ tự động tạo/cập nhật bảng khi ứng dụng chạy (`ddl-auto: update`).
+---
 
-### Bước 2: Cài đặt và cấu hình hMailServer (hoặc dùng Gmail)
-1. Tải và cài đặt **hMailServer** từ [https://www.hmailserver.com/download](https://www.hmailserver.com/download).
-2. Tạo Domain `domain1.com` và 2 tài khoản: `user1@domain1.com` / `user1`, `user2@domain1.com` / `user2`.
-3. Đảm bảo cổng SMTP (25 hoặc 587) và IMAP (143) đang mở.
+### 4. Khắc phục Lỗi Logic & Xử lý Email (Backend)
+* **`MailServiceImpl.java`**:
+  - Sửa lỗi trích xuất địa chỉ email khi chuỗi không có dấu ngoặc nhọn `<>`.
+  - Bổ sung cơ chế đọc nội dung an toàn: Hỗ trợ Plain text, HTML và Multipart (thư có file đính kèm), loại bỏ nguy cơ `NullPointerException`.
+* **`MailFacadeServiceImpl.java`**:
+  - Tích hợp `SpamFilterService`: Tự động đối soát thư từ IMAP với bảng `spam_rules` trong MySQL để chuyển thư vào mục Spam.
+  - Tích hợp nạp email logs từ database khi hòm thư IMAP mới tạo chưa có thư.
+  - Tích hợp `EmailLogRepository` để tự động lưu vết lịch sử mỗi khi gửi email thành công.
+* **`AuthController.java`**:
+  - Tích hợp `UserService` xử lý lưu người dùng mới vào MySQL khi đăng ký (`POST /register`).
+  - Hỗ trợ cơ chế đăng nhập linh hoạt (Database MySQL + Fallback hMailServer).
 
-### Bước 3: Chạy ứng dụng Spring Boot
-1. Mở dự án trong **IntelliJ IDEA** (hoặc Eclipse / VS Code).
-2. Chạy file khởi động: `MailApplication.java`.
-3. Mở trình duyệt và truy cập: `http://localhost:8080`.
+---
 
-### Bước 4: Kiểm tra các luồng nghiệp vụ
-1. **Đăng ký tài khoản mới**: Vào `/register`, điền thông tin -> dữ liệu sẽ được lưu trực tiếp vào MySQL bảng `users`.
-2. **Đăng nhập**: Sử dụng tài khoản vừa đăng ký hoặc tài khoản mặc định `user1@domain1.com` / `user1`.
-3. **Soạn thư & Gửi đính kèm**: Soạn thư gửi tới `user2@domain1.com`, đính kèm file và gửi đi.
-4. **Kiểm tra Hộp thư đến & Bộ lọc Spam**: Đăng nhập `user2@domain1.com` để đọc thư, thử gửi thư có chứa từ khóa `trúng thưởng` để kiểm tra bộ lọc Spam tự động.
+### 5. Khắc phục Giao diện & JavaScript (Frontend Thymeleaf)
+* **Gửi file đính kèm (`sendMail.html`)**: Thêm thuộc tính `enctype="multipart/form-data"` và ô chọn file đính kèm.
+* **Trả lời thư (`detailMail.html`)**: Thêm nút **Trả lời thư (Reply)** tự động điền địa chỉ người nhận và thêm tiền tố `Re:`.
+* **Sửa lỗi Crash JavaScript (Quill Editor)**:
+  - Sửa lỗi off-by-one trong vòng lặp JavaScript (`i < emails.length`).
+  - Bọc `JSON.parse` an toàn cho Quill trong tất cả các view (`home.html`, `sentMail.html`, `spamMail.html`, `detailMail.html`, `sendMail.html`).
+* **Hiển thị thông báo đăng ký / đăng nhập**: Bổ sung hiển thị thông báo thành công và lỗi trong `login.html` và `register.html`.
+
+---
+
+### 6. Khắc phục Lỗi Ký tự BOM (`\ufeff`) & Cấu hình UTF-8
+* Quét và chuyển đổi toàn bộ các file mã nguồn `.java` sang chuẩn **UTF-8 No BOM**, khắc phục triệt để lỗi `illegal character: '\ufeff'`.
+* Cấu hình bắt buộc UTF-8 cho Servlet và Thymeleaf trong `application.yml`.
+
+---
+
+### 7. Tạo Tài liệu Hướng dẫn Toàn diện
+* [**`HUONG_DAN_TONG_HOP.md`**](HUONG_DAN_TONG_HOP.md): Tài liệu hướng dẫn đầy đủ từ A -> Z:
+  - Hướng dẫn cấu hình Máy Chủ (MySQL, hMailServer, IP LAN, Firewall).
+  - Hướng dẫn chi tiết Khởi động chương trình qua IntelliJ IDEA và CMD.
+  - Hướng dẫn kết nối cho Máy Khách (Client không cần cài hMailServer/MySQL).
+  - Hướng dẫn Test 2 tài khoản trên cùng 1 máy tính.
+  - Hướng dẫn cấu hình bộ lọc Spam.
+  - Bảng tổng hợp các vị trí cần sửa IP & Tài khoản khi chia sẻ project.
+  - Xử lý các lỗi thường gặp (trùng port 8080, lỗi MySQL, lỗi hMailServer).
