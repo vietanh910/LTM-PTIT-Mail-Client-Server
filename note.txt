@@ -1,0 +1,103 @@
+ Hướng dẫn khởi chạy nhanh:
+Mở và tạo Domain (domain1.com) cùng tài khoản (user1@domain1.com, user2@domain1.com) trong hMailServer.
+Khởi chạy ứng dụng bằng cách run
+MailApplication.java
+.
+Truy cập trình duyệt tại http://localhost:8080 để trải nghiệm các chức năng gửi/nhận thư, gửi file đính kèm và gửi thư hàng loạt qua Excel.
+
+
+
+1. hMailServer là gì?
+Dự án Spring Boot này là một Mail Client (giao diện người dùng để soạn, gửi và đọc thư).
+hMailServer là một phần mềm máy chủ email miễn phí dành cho Windows. Nó đóng vai trò làm máy chủ nhận diện tài khoản, quản lý hộp thư và xử lý giao thức SMTP (gửi thư) cùng IMAP (nhận thư).
+2. Tải và Cài đặt hMailServer (Khoảng 2 - 3 phút)
+Tải về:
+
+Truy cập trang chủ: https://www.hmailserver.com/download
+Tải bản: hMailServer 5.6.8 - Build 2383 (file .exe khoảng vài MB).
+Cài đặt:
+
+Mở file installer .exe vừa tải.
+Khi được hỏi chọn loại Database, chọn: Use built-in database engine (SQL Compact) (lựa chọn này đơn giản nhất, không cần cài thêm MySQL hay SQL Server).
+Bước tiếp theo, đặt mật khẩu quản trị cho hMailServer (ví dụ: 123456 hoặc admin) -> Nhấn Next cho đến khi hoàn tất.
+3. Cấu hình hMailServer để chạy với đồ án
+Sau khi cài đặt xong, bạn mở ứng dụng hMailServer Administrator từ Start Menu:
+
+Đăng nhập: Chọn localhost và nhập mật khẩu bạn vừa đặt ở bước cài đặt.
+
+Tạo Domain:
+
+Bấm vào mục Domains ở thanh menu bên trái -> Nhấn nút Add domain...
+Nhập tên miền: domain1.com -> Nhấn Save.
+Tạo 2 tài khoản thử nghiệm:
+
+Mở rộng nhánh Domains -> domain1.com -> Bấm vào Accounts -> Nhấn Add...
+Tài khoản 1:
+Address: user1
+Password: user1
+Nhấn Save (Email sẽ là: user1@domain1.com).
+Tài khoản 2:
+Address: user2
+Password: user2
+Nhấn Save (Email sẽ là: user2@domain1.com).
+Kiểm tra cổng (Ports):
+
+Vào Settings -> Advanced -> TCP/IP ports:
+Đảm bảo cổng 0.0.0.0 / 25 (hoặc 587) cho SMTP và 0.0.0.0 / 143 cho IMAP đang ở trạng thái kích hoạt.
+TIP
+
+Cách thay thế nếu bạn muốn test bằng Gmail mà không cần cài hMailServer:
+
+Vào tài khoản Google của bạn: Google Account Security.
+Bật xác minh 2 bước (2-Step Verification) -> Tạo một Mật khẩu ứng dụng (App Password) 16 chữ cái.
+Khởi chạy ứng dụng Spring Boot và đăng nhập bằng:
+Username: email_cua_ban@gmail.com
+Password: Mã App Password 16 ký tự vừa tạo.
+Hệ thống mã nguồn đã được cấu hình sẵn để tự động nhận diện đuôi @gmail.com và kết nối tới máy chủ smtp.gmail.com:465 và imap.gmail.com.
+
+
+
+
+
+1. File cấu hình tổng quát (Database & Server Ports)
+👉
+src/main/resources/application.yml
+
+Kết nối MySQL Database:
+yaml
+
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/mail_db
+    username: root
+    password: 123456
+Cấu hình thông số máy chủ Mail (Gmail, PTIT Office365, hMailServer local):
+Gmail: smtp.gmail.com (Port 465 SSL)
+PTIT: smtp.office365.com (Port 587 STARTTLS)
+hMailServer local mặc định: 127.0.0.1 (Port 587 hoặc 25)
+2. File thiết lập thuộc tính giao thức mạng (SMTP / IMAP)
+👉
+src/main/java/com/ptit/ltm/mail_application/configuration/MailApplicationConfiguration.java
+ File này định nghĩa các thuộc tính kết nối chi tiết cho 2 giao thức cốt lõi:
+
+Hàm sendMailProperties(): Thiết lập giao thức SMTP để gửi email (cấu hình host, port, socketFactory, ssl/starttls, auth).
+Hàm receiveMailProperties(): Thiết lập giao thức IMAP / IMAPS để nhận và duyệt danh sách thư từ máy chủ.
+3. File khởi tạo phiên kết nối & thực thi gửi nhận thư (Java Code)
+👉
+SessionServiceImpl.java
+:
+
+Hàm getSendMailSession(username, password): Tạo đối tượng Session và xác thực tài khoản PasswordAuthentication với máy chủ SMTP.
+Hàm getReceiveMailSession(username): Tạo Session đọc mail qua IMAP.
+👉
+MailServiceImpl.java
+:
+
+Hàm getEmails(): Thực hiện Store.connect(username, password) để mở kết nối trực tiếp vào máy chủ IMAP và lấy các thư mục (INBOX, SENT, SPAM).
+👉
+MailFacadeServiceImpl.java
+:
+
+Hàm sendMail(): Gọi Transport.send(message) để đẩy email qua cổng SMTP của Mail Server.
+Hàm isAuthenticatedWithHMailServer(): Mở kết nối thử transport.connect() để kiểm tra thông tin đăng nhập có hợp lệ với Mail Server hay không.

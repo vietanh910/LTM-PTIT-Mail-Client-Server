@@ -12,7 +12,7 @@
 <div class="flex">
   <div th:replace="~{fragments/drawer :: drawer}">...</div>
   <div class="min-h-screen rounded-lg flex flex-col flex-1 bg-gray-50 p-10">
-    <form action="/send" method="post">
+    <form action="/send" method="post" enctype="multipart/form-data">
       <div class="mb-6 relative">
         <label
                 class="block w-fit top-[-12px] left-[20px] absolute bg-gray-50 text-sm font-medium text-gray-900 dark:text-white"
@@ -25,6 +25,7 @@
                 name="toAddress"
                 placeholder="name@flowbite.com"
                 required
+                th:value="${email.toAddress}"
                 type="email"
         />
       </div>
@@ -54,8 +55,19 @@
                 class="bg-white rounded-lg cursor-text h-[20rem] overflow-y-auto"
                 id="content"
                 name="content"
-                required
         ></div>
+      </div>
+      <div class="mb-6 relative">
+        <label
+                class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                for="file"
+        >File đính kèm (tùy chọn)</label>
+        <input
+                class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
+                id="file"
+                name="file"
+                type="file"
+        />
       </div>
       <div class="flex justify-center">
         <button
@@ -90,10 +102,14 @@
     },
   });
   /*<![CDATA[*/
-  const email = /*[[${email}]]*/ {}; // Use empty array as a fallback or handle the absence of emails
+  const email = /*[[${email}]]*/ {};
   /*]]>*/
-  if (email.content) {
-    quill.setContents(JSON.parse(email.content));
+  if (email && email.content) {
+    try {
+      quill.setContents(JSON.parse(email.content));
+    } catch (e) {
+      quill.setText(email.content);
+    }
   }
   document.querySelector("#content").onclick = () => {
     quill.focus()

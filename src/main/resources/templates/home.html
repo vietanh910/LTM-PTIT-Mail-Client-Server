@@ -60,6 +60,9 @@
                         11:00 AM
                     </td>
                 </tr>
+                <tr th:if="${#lists.isEmpty(emails)}">
+                    <td colspan="4" class="px-6 py-8 text-center text-gray-400">Không có thư nào trong Hộp thư đến</td>
+                </tr>
                 </tbody>
             </table>
         </div>
@@ -69,27 +72,35 @@
 <script src="/js/lib/quill/quill.js"></script>
 <script th:inline="javascript">
     /*<![CDATA[*/
-    const emails = /*[[${emails}]]*/ []; // Use empty array as a fallback or handle the absence of emails
+    const emails = /*[[${emails}]]*/ [];
     /*]]>*/
-    let quill;
-    for (let i = 0; i <= emails.length; i++) {
+    for (let i = 0; i < emails.length; i++) {
         const email = emails[i];
-        quill = new Quill(`#content-${email.id}`, {
-            theme: 'bubble',
-            readOnly: true,
-        });
-        quill.setContents(JSON.parse(email.content));
-        quill.root.innerHTML = `<p class="truncate w-[55%]">${email.subject} - ${quill.getText()}</p>`;
+        if (!email) continue;
+        const container = document.querySelector(`#content-${email.id}`);
+        if (!container) continue;
+
+        try {
+            const parsed = JSON.parse(email.content);
+            const quill = new Quill(`#content-${email.id}`, {
+                theme: 'bubble',
+                readOnly: true,
+            });
+            quill.setContents(parsed);
+            quill.root.innerHTML = `<p class="truncate w-[55%]">${email.subject} - ${quill.getText()}</p>`;
+        } catch (e) {
+            container.innerText = email.content || '';
+        }
     }
 
     function getDetailMail(id) {
         const email = emails.find((email) => email.id == id);
-        localStorage.setItem("email", JSON.stringify(email));
-
-        const author = "another";
-        localStorage.setItem("author", author);
-        window.location.href = "/detail/" + id;
-      }
+        if (email) {
+            localStorage.setItem("email", JSON.stringify(email));
+            localStorage.setItem("author", "another");
+            window.location.href = "/detail/" + id;
+        }
+    }
 </script>
 
 </body>

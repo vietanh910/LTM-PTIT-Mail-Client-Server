@@ -1,0 +1,220 @@
+{
+  "ops": [
+    {
+      "insert": " "
+    },
+    {
+      "attributes": {
+        "align": "justify"
+      },
+      "insert": "\n"
+    },
+    {
+      "attributes": {
+        "bold": true
+      },
+      "insert": "TÊN CƠ QUAN…"
+    },
+    {
+      "insert": "."
+    },
+    {
+      "attributes": {
+        "align": "center"
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": "       "
+    },
+    {
+      "attributes": {
+        "bold": true
+      },
+      "insert": "  CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM"
+    },
+    {
+      "attributes": {
+        "align": "center"
+      },
+      "insert": "\n"
+    },
+    {
+      "attributes": {
+        "bold": true
+      },
+      "insert": "        Độc lập - Tự do - Hạnh phúc"
+    },
+    {
+      "attributes": {
+        "align": "center"
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": "         …ngày….tháng….năm ..."
+    },
+    {
+      "attributes": {
+        "align": "right"
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": " "
+    },
+    {
+      "attributes": {
+        "align": "justify"
+      },
+      "insert": "\n"
+    },
+    {
+      "attributes": {
+        "bold": true
+      },
+      "insert": "THÔNG BÁO VỀ VIỆC TỔ CHỨC SỰ KIỆN…"
+    },
+    {
+      "attributes": {
+        "align": "center"
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": " "
+    },
+    {
+      "attributes": {
+        "align": "center"
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": "Kính gửi: ……………………………………"
+    },
+    {
+      "attributes": {
+        "align": "justify"
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": "Đơn vị thông báo:................................................. ; Mã số thuế:"
+    },
+    {
+      "attributes": {
+        "align": "justify"
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": "Địa chỉ:..................................................................;"
+    },
+    {
+      "attributes": {
+        "align": "justify"
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": "- Người đại diện theo pháp luật (viết chữ in hoa): .............................. Giấy CMND số: ... cấp ngày ..../....../....... nơi cấp ...;"
+    },
+    {
+      "attributes": {
+        "align": "justify"
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": "- Số điện thoại tổ chức/cá nhân:"
+    },
+    {
+      "attributes": {
+        "align": "justify"
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": "Chúng tôi trân trọng thông báo đến………. về việc tổ chức sự kiện………….."
+    },
+    {
+      "attributes": {
+        "align": "justify"
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": "- Thời gian tổ chức:…………………………………………"
+    },
+    {
+      "attributes": {
+        "align": "justify"
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": "- Địa điểm:…………………………………………………"
+    },
+    {
+      "attributes": {
+        "align": "justify"
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": "- Người chịu trách nhiệm: …………………………………"
+    },
+    {
+      "attributes": {
+        "align": "justify"
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": "Chúng tôi cam kết:"
+    },
+    {
+      "attributes": {
+        "align": "justify"
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": "…………………………………………"
+    },
+    {
+      "attributes": {
+        "align": "justify"
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": "Nơi nhận:   \n- Như trên;\n- Lưu: Văn thư;\n"
+    },
+    {
+      "attributes": {
+        "bold": true
+      },
+      "insert": "ĐẠI DIỆN THEO PHÁP LUẬT CỦA CƠ QUAN, TỔ CHỨC THÔNG BÁO"
+    },
+    {
+      "attributes": {
+        "align": "center"
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": "(Ký, ghi rõ họ tên và đóng dấu)"
+    },
+    {
+      "attributes": {
+        "align": "center"
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": "\n"
+    }
+  ]
+}

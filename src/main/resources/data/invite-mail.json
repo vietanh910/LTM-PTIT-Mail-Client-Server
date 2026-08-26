@@ -1,0 +1,14 @@
+{
+  "ops": [
+    {
+      "attributes": {
+        "italic": true,
+        "bold": true
+      },
+      "insert": "Trân trọng kính mời: ............................................."
+    },
+    {
+      "insert": "\nTới dự: ............\nĐịa chỉ:................................\nThời gian: vào hồi........ ngày...... tháng...... năm..........\nSự hiện diện của bạn là sự hân hạnh của chúng tôi. Rất hân hạnh được đón tiếp!\nMọi thắc mắc xin liên hệ:........................................................\nTrân trọng, \n(Ký tên)\n"
+    }
+  ]
+}

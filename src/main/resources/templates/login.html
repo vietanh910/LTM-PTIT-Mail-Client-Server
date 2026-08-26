@@ -58,7 +58,8 @@
                   required=""
                 />
               </div>
-              <p class="text-red-500 text-center" th:if="${error}">Có lỗi xảy ra</p>
+              <p class="text-green-600 text-center font-medium" th:if="${message}" th:text="${message}"></p>
+              <p class="text-red-500 text-center font-medium" th:if="${error}" th:text="${error}"></p>
               <div class="flex items-center justify-end">
                 <a
                   href="#"

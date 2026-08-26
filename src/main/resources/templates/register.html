@@ -27,6 +27,7 @@
             >
               Tạo tài khoản mới
             </h1>
+            <p class="text-red-500 text-center font-medium text-sm" th:if="${param.error}" th:text="${param.error}"></p>
             <form
               class="space-y-4 md:space-y-6"
               action="/register"

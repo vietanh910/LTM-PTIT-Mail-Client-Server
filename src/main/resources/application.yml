@@ -1,3 +1,18 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/mail_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Ho_Chi_Minh&characterEncoding=UTF-8
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
 mailConfig:
   gmail:
     smtp:
@@ -22,5 +37,6 @@ mailConfig:
   default:
     smtp:
       auth: true
-      host: 192.168.1.15
+      host: 127.0.0.1
       port: 587
+

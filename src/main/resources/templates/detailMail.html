@@ -41,9 +41,24 @@
               >Nội dung</span
             >
             <div
-              class="bg-white rounded-lg cursor-text h-[20rem] overflow-y-auto whitespace-pre-wrap"
+              class="bg-white rounded-lg cursor-text min-h-[16rem] p-4 border border-gray-200 overflow-y-auto whitespace-pre-wrap"
               id="content"
             ></div>
+          </div>
+          <div class="flex gap-4">
+            <button
+              type="button"
+              id="btn-reply"
+              class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5"
+            >
+              Trả lời thư
+            </button>
+            <a
+              href="/"
+              class="text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5"
+            >
+              Quay lại
+            </a>
           </div>
         </div>
       </div>
@@ -51,35 +66,47 @@
 
     <script src="/js/lib/quill/quill.js"></script>
     <script th:inline="javascript">
-      const email = JSON.parse(localStorage.getItem("email"));
+      const emailRaw = localStorage.getItem("email");
+      const email = emailRaw ? JSON.parse(emailRaw) : null;
       const authorData = localStorage.getItem("author");
       let subject = document.getElementById("subject");
       let author = document.getElementById("author");
       let address = document.getElementById("address");
       let content = document.getElementById("content");
-      subject.innerHTML = email.subject;
 
-      if (authorData === "me") {
-        author.innerHTML = "Người nhận";
-        address.innerHTML = email.toAddress;
+      if (email) {
+        subject.innerText = email.subject || '(Không có tiêu đề)';
+
+        if (authorData === "me") {
+          author.innerText = "Người nhận";
+          address.innerText = email.toAddress || '';
+          document.getElementById("btn-reply").style.display = "none";
+        } else {
+          author.innerText = "Người gửi";
+          address.innerText = email.fromAddress || '';
+        }
+
+        try {
+          const contentData = JSON.parse(email.content);
+          const quill = new Quill("#content", {
+            theme: "snow",
+            modules: { toolbar: null },
+            readOnly: true
+          });
+          quill.setContents(contentData);
+          quill.enable(false);
+        } catch (e) {
+          content.innerText = email.content || '(Thư không có nội dung)';
+        }
+
+        document.getElementById("btn-reply").onclick = function() {
+          const replySubject = email.subject && email.subject.startsWith("Re:") ? email.subject : "Re: " + (email.subject || '');
+          window.location.href = `/send?replyTo=${encodeURIComponent(email.fromAddress)}&subject=${encodeURIComponent(replySubject)}`;
+        };
       } else {
-        author.innerHTML = "Người gửi";
-        address.innerHTML = email.fromAddress;
+        subject.innerText = "Không tìm thấy dữ liệu thư";
+        content.innerText = "Vui lòng chọn thư từ danh sách Hộp thư đến hoặc Thư đã gửi.";
       }
-
-      const contentData = JSON.parse(email.content);
-      console.log(contentData);
-
-      const quill = new Quill("#content", {
-        theme: "snow",
-        modules: {
-          toolbar: null,
-        },
-      });
-
-      // Apply Delta to Quill instance
-      quill.setContents(contentData);
-      quill.enable(false);
     </script>
   </body>
 </html>

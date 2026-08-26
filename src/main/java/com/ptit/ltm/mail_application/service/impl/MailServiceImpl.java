@@ -5,15 +5,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.activation.DataHandler;
-import javax.activation.DataSource;
-import javax.activation.FileDataSource;
-import javax.mail.*;
-import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.MimeMessage;
-import javax.mail.internet.MimeMultipart;
-import javax.mail.util.ByteArrayDataSource;
+import jakarta.activation.DataHandler;
+import jakarta.activation.DataSource;
+import jakarta.activation.FileDataSource;
+import jakarta.mail.*;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeBodyPart;
+import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.MimeMultipart;
+import jakarta.mail.util.ByteArrayDataSource;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -140,28 +140,49 @@ public class MailServiceImpl {
         log.info("(getEmails) username: {}, folderName: {}", username, folderName);
 
         List<Email> emails = new ArrayList<>();
-        Email email;
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd/MM/yyy hh:mm");
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm");
 
         try {
             Store emailStore = (emailSession.getStore(mailStoreType));
             emailStore.connect(username, password);
 
             Folder folder = emailStore.getFolder(folderName);
+            if (!folder.exists()) {
+                log.warn("Folder {} does not exist", folderName);
+                emailStore.close();
+                return emails;
+            }
             folder.open(Folder.READ_ONLY);
 
-            System.out.println(folder.getMessageCount());
+            log.info("Folder {} message count: {}", folderName, folder.getMessageCount());
 
             Message[] messages = folder.getMessages();
 
             for (Message message : messages) {
-                email = Email.of(
-                      UUID.randomUUID().toString(),
-                        extractEmail(message.getFrom()[0].toString()),
-                        extractEmail(message.getAllRecipients()[0].toString()),
-                        message.getSubject(),
-                        message.getContent().toString(),
-                        simpleDateFormat.format(message.getReceivedDate()),
+                String from = "";
+                if (message.getFrom() != null && message.getFrom().length > 0) {
+                    from = extractEmail(message.getFrom()[0].toString());
+                }
+
+                String to = "";
+                if (message.getAllRecipients() != null && message.getAllRecipients().length > 0) {
+                    to = extractEmail(message.getAllRecipients()[0].toString());
+                }
+
+                String subject = message.getSubject() != null ? message.getSubject() : "(Không có tiêu đề)";
+                
+                Date mailDate = message.getReceivedDate() != null ? message.getReceivedDate() : message.getSentDate();
+                String dateStr = mailDate != null ? simpleDateFormat.format(mailDate) : "";
+
+                String content = extractTextFromMessage(message);
+
+                Email email = Email.of(
+                        UUID.randomUUID().toString(),
+                        from,
+                        to,
+                        subject,
+                        content,
+                        dateStr,
                         false
                 );
 
@@ -171,9 +192,43 @@ public class MailServiceImpl {
             folder.close(false);
             emailStore.close();
         } catch (Exception e) {
-            log.error(e.getMessage());
+            log.error("Error while fetching emails from folder {}: {}", folderName, e.getMessage(), e);
         }
 
         return emails;
+    }
+
+    private String extractTextFromMessage(Message message) {
+        try {
+            if (message.isMimeType("text/plain")) {
+                return message.getContent().toString();
+            } else if (message.isMimeType("text/html")) {
+                return message.getContent().toString();
+            } else if (message.isMimeType("multipart/*")) {
+                Multipart multipart = (Multipart) message.getContent();
+                return extractTextFromMultipart(multipart);
+            }
+            return message.getContent() != null ? message.getContent().toString() : "";
+        } catch (Exception e) {
+            log.warn("Cannot extract text from message: {}", e.getMessage());
+            return "";
+        }
+    }
+
+    private String extractTextFromMultipart(Multipart multipart) throws MessagingException, IOException {
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < multipart.getCount(); i++) {
+            BodyPart bodyPart = multipart.getBodyPart(i);
+            if (bodyPart.isMimeType("text/plain")) {
+                result.append(bodyPart.getContent());
+            } else if (bodyPart.isMimeType("text/html")) {
+                if (result.length() == 0) {
+                    result.append(bodyPart.getContent());
+                }
+            } else if (bodyPart.getContent() instanceof Multipart) {
+                result.append(extractTextFromMultipart((Multipart) bodyPart.getContent()));
+            }
+        }
+        return result.toString();
     }
 }
