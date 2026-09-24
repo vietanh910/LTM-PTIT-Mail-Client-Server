@@ -13,6 +13,31 @@
       <div th:replace="~{fragments/drawer :: drawer}">...</div>
       <div class="min-h-screen rounded-lg flex flex-col flex-1 bg-gray-50 p-10">
         <div>
+          <!-- Thanh công cụ phía trên: Nút Quay lại và Trả lời thư -->
+          <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+            <div class="flex gap-3">
+              <a
+                href="javascript:history.back()"
+                class="inline-flex items-center text-gray-700 bg-white border border-gray-300 hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-4 py-2 shadow-sm transition"
+              >
+                <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                Quay lại
+              </a>
+              <button
+                type="button"
+                id="btn-reply"
+                class="inline-flex items-center text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 shadow-sm transition"
+              >
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
+                </svg>
+                Trả lời thư
+              </button>
+            </div>
+          </div>
+
           <div class="mb-6 relative">
             <div
               class="block w-fit top-[-12px] left-[20px] absolute bg-gray-50 text-sm font-medium text-gray-900 dark:text-white"
@@ -31,7 +56,7 @@
               >Tiêu đề</span
             >
             <span
-              class="border-none border-gray-300 text-gray-900 text-sm rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+              class="border-none border-gray-300 text-gray-900 text-sm rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 font-semibold text-base"
               id="subject"
             ></span>
           </div>
@@ -44,21 +69,6 @@
               class="bg-white rounded-lg cursor-text min-h-[16rem] p-4 border border-gray-200 overflow-y-auto whitespace-pre-wrap"
               id="content"
             ></div>
-          </div>
-          <div class="flex gap-4">
-            <button
-              type="button"
-              id="btn-reply"
-              class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5"
-            >
-              Trả lời thư
-            </button>
-            <a
-              href="/"
-              class="text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5"
-            >
-              Quay lại
-            </a>
           </div>
         </div>
       </div>

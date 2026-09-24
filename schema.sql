@@ -1,4 +1,4 @@
-﻿-- ==============================================================================
+-- ==============================================================================
 -- 1. FILE KHỞI TẠO CẤU TRÚC BẢNG (SCHEMA DEFINITION)
 -- DỰ ÁN: LTM MAIL CLIENT - SERVER (PTIT)
 -- Hướng dẫn: Chạy file này ĐẦU TIÊN để tạo Database và các Bảng
@@ -57,6 +57,9 @@ CREATE TABLE `email_logs` (
     `has_attachment` TINYINT(1) DEFAULT 0 COMMENT 'Có file đính kèm: 1=Có, 0=Không',
     `attachment_name` VARCHAR(255) COMMENT 'Tên file đính kèm',
     `is_spam` TINYINT(1) DEFAULT 0 COMMENT 'Là thư rác: 1=Đúng, 0=Sai',
+    `is_read` TINYINT(1) DEFAULT 0 COMMENT 'Đã đọc: 1=Đã đọc, 0=Chưa đọc',
+    `is_deleted` TINYINT(1) DEFAULT 0 COMMENT 'Đã xóa vào thùng rác: 1=Đã xóa, 0=Chưa xóa',
+    `deleted_at` DATETIME DEFAULT NULL COMMENT 'Thời gian chuyển vào thùng rác',
     `user_id` BIGINT,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT `fk_email_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL

@@ -16,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 import jakarta.mail.Message;
 import jakarta.mail.MessagingException;
 import jakarta.mail.Session;
+import jakarta.mail.Store;
 import jakarta.mail.Transport;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,15 +49,12 @@ public class MailFacadeServiceImpl {
           session
     );
 
-    mailService.copyIntoSent(
-          message,
-          sessionService.getReceiveMailSession(username),
-          username,
-          password
-    );
-
     try {
-      Transport.send(message);
+      // Gửi thư qua SMTP trước
+      Transport transport = session.getTransport("smtp");
+      transport.connect();
+      transport.sendMessage(message, message.getAllRecipients());
+      transport.close();
       log.info("(sendMail) success: to={}", request.getToAddress());
 
       // Ghi log vào MySQL Database
@@ -71,6 +69,14 @@ public class MailFacadeServiceImpl {
               .build();
       emailLogRepository.save(logEntry);
 
+      // Copy vào thư mục Sent sau khi gửi thành công (không throw nếu lỗi)
+      mailService.copyIntoSent(
+              message,
+              sessionService.getReceiveMailSession(username),
+              username,
+              password
+      );
+
     } catch (MessagingException e) {
       log.error("Failed to send email: {}", e.getMessage());
       throw new RuntimeException(e);
@@ -80,18 +86,41 @@ public class MailFacadeServiceImpl {
   public boolean isAuthenticatedWithHMailServer(String username, String password) {
     log.info("(isAuthenticatedWithHMailServer) start: {}", username);
 
-    Session session = sessionService.getSendMailSession(username, password);
+    String fullEmail = username;
+    if (!fullEmail.contains("@")) {
+      fullEmail = username + "@domain1.com";
+    }
 
+    // 1. Thử xác thực qua IMAP (port 143)
     try {
-      Transport transport = session.getTransport("smtp");
-      transport.connect();
-      transport.close();
-
+      Session receiveSession = sessionService.getReceiveMailSession(fullEmail);
+      String mailStoreType = fullEmail.contains("gmail") ? "imaps" : "imap";
+      Store store = receiveSession.getStore(mailStoreType);
+      store.connect("127.0.0.1", 143, fullEmail, password);
+      store.close();
+      log.info("(isAuthenticatedWithHMailServer) IMAP auth success for: {}", fullEmail);
       return true;
     } catch (Exception e) {
-      log.warn("SMTP authentication check: {}", e.getMessage());
-      return false;
+      log.warn("IMAP auth failed for {}: {}", fullEmail, e.getMessage());
     }
+
+    // 2. Thử xác thực qua SMTP (port 25 hoặc 587)
+    try {
+      Session sendSession = sessionService.getSendMailSession(fullEmail, password);
+      Transport transport = sendSession.getTransport("smtp");
+      try {
+        transport.connect("127.0.0.1", 25, fullEmail, password);
+      } catch (Exception e1) {
+        transport.connect("127.0.0.1", 587, fullEmail, password);
+      }
+      transport.close();
+      log.info("(isAuthenticatedWithHMailServer) SMTP auth success for: {}", fullEmail);
+      return true;
+    } catch (Exception e) {
+      log.warn("SMTP auth failed for {}: {}", fullEmail, e.getMessage());
+    }
+
+    return false;
   }
 
   public List<Email> listInboxMail(String username, String password) {
@@ -114,12 +143,12 @@ public class MailFacadeServiceImpl {
 
     // Nếu IMAP chưa có thư (hòm thư mới), nạp thêm các thư mẫu từ MySQL Database
     if (emails.isEmpty()) {
-      List<EmailLog> dbLogs = emailLogRepository.findByRecipientOrderByCreatedAtDesc(username);
+      List<EmailLog> dbLogs = emailLogRepository.findByRecipientAndDeletedFalseOrderByCreatedAtDesc(username);
       if (dbLogs.isEmpty()) {
         dbLogs = emailLogRepository.findByMailTypeOrderByCreatedAtDesc(MailType.INBOX);
       }
       for (EmailLog dbLog : dbLogs) {
-        if (!dbLog.isSpam()) {
+        if (!dbLog.isSpam() && !dbLog.isDeleted()) {
           emails.add(convertLogToEmail(dbLog));
         }
       }
@@ -146,12 +175,14 @@ public class MailFacadeServiceImpl {
 
     // Nếu IMAP chưa có thư đã gửi, nạp từ bảng email_logs trong MySQL
     if (emails.isEmpty()) {
-      List<EmailLog> dbLogs = emailLogRepository.findBySenderOrderByCreatedAtDesc(username);
+      List<EmailLog> dbLogs = emailLogRepository.findBySenderAndDeletedFalseOrderByCreatedAtDesc(username);
       if (dbLogs.isEmpty()) {
         dbLogs = emailLogRepository.findByMailTypeOrderByCreatedAtDesc(MailType.SENT);
       }
       for (EmailLog dbLog : dbLogs) {
-        emails.add(convertLogToEmail(dbLog));
+        if (!dbLog.isDeleted()) {
+          emails.add(convertLogToEmail(dbLog));
+        }
       }
     }
 
@@ -192,25 +223,30 @@ public class MailFacadeServiceImpl {
     if (allSpam.isEmpty()) {
       List<EmailLog> dbLogs = emailLogRepository.findByMailTypeOrderByCreatedAtDesc(MailType.SPAM);
       for (EmailLog dbLog : dbLogs) {
-        allSpam.add(convertLogToEmail(dbLog));
+        if (!dbLog.isDeleted()) {
+          allSpam.add(convertLogToEmail(dbLog));
+        }
       }
     }
 
     return allSpam;
   }
 
-  private Email convertLogToEmail(EmailLog log) {
+  public Email convertLogToEmail(EmailLog log) {
     java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     String dateStr = log.getCreatedAt() != null ? log.getCreatedAt().format(formatter) : "";
-    return Email.of(
-            log.getMessageUuid() != null ? log.getMessageUuid() : java.util.UUID.randomUUID().toString(),
-            log.getSender(),
-            log.getRecipient(),
-            log.getSubject() != null ? log.getSubject() : "(Không có tiêu đề)",
-            log.getContent() != null ? log.getContent() : "",
-            dateStr,
-            false
-    );
+    return Email.builder()
+            .id(log.getId() != null ? String.valueOf(log.getId()) : (log.getMessageUuid() != null ? log.getMessageUuid() : java.util.UUID.randomUUID().toString()))
+            .fromAddress(log.getSender())
+            .toAddress(log.getRecipient())
+            .subject(log.getSubject() != null ? log.getSubject() : "(Không có tiêu đề)")
+            .content(log.getContent() != null ? log.getContent() : "")
+            .date(dateStr)
+            .isReplying(false)
+            .dbId(log.getId())
+            .read(log.isRead())
+            .deleted(log.isDeleted())
+            .build();
   }
 
   public List<Email> fakeData() {

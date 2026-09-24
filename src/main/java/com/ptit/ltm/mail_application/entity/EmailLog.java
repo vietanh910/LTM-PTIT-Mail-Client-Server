@@ -49,6 +49,17 @@ public class EmailLog {
     @Builder.Default
     private boolean spam = false;
 
+    @Column(name = "is_read")
+    @Builder.Default
+    private boolean read = false;
+
+    @Column(name = "is_deleted")
+    @Builder.Default
+    private boolean deleted = false;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

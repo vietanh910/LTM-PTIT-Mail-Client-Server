@@ -35,9 +35,15 @@ public class MailApplicationConfiguration {
             props.put("mail.smtp.auth", "true");
             props.put("mail.smtp.port", "587");
         } else {
-            props.put("mail.smtp.auth", "true");
+            // hMailServer local - dùng cổng 25 (SMTP thuần, không SSL)
             props.put("mail.smtp.host", "127.0.0.1");
-            props.put("mail.smtp.port", "587");
+            props.put("mail.smtp.port", "25");
+            props.put("mail.smtp.auth", "true");
+            props.put("mail.smtp.starttls.enable", "false");
+            props.put("mail.smtp.ssl.enable", "false");
+            props.put("mail.smtp.ssl.trust", "127.0.0.1");
+            props.put("mail.smtp.connectiontimeout", "5000");
+            props.put("mail.smtp.timeout", "5000");
         }
         return props;
     }

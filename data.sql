@@ -8,10 +8,10 @@ USE `mail_db`;
 
 -- 1. Nạp danh sách người dùng (Users)
 INSERT IGNORE INTO `users` (`id`, `username`, `password`, `full_name`, `email`, `phone_number`, `address`, `role`, `status`) VALUES
-(1, 'admin', 'admin123', 'Quản Trị Viên Hệ Thống', 'admin@domain1.com', '0901234567', 'Hà Nội', 'ROLE_ADMIN', 'ACTIVE'),
-(2, 'user1', 'user1', 'Nguyễn Văn An', 'user1@domain1.com', '0912345678', 'Hà Nội', 'ROLE_USER', 'ACTIVE'),
-(3, 'user2', 'user2', 'Trần Thị Bình', 'user2@domain1.com', '0987654321', 'Hồ Chí Minh', 'ROLE_USER', 'ACTIVE'),
-(4, 'user3', 'user3', 'Lê Hoàng Cường', 'user3@domain1.com', '0933445566', 'Đà Nẵng', 'ROLE_USER', 'ACTIVE'),
+(1, 'admin', '123456', 'Quản Trị Viên Hệ Thống', 'admin@domain1.com', '0901234567', 'Hà Nội', 'ROLE_ADMIN', 'ACTIVE'),
+(2, 'user1', '123456', 'Nguyễn Văn An', 'user1@domain1.com', '0912345678', 'Hà Nội', 'ROLE_USER', 'ACTIVE'),
+(3, 'user2', '123456', 'Trần Thị Bình', 'user2@domain1.com', '0987654321', 'Hồ Chí Minh', 'ROLE_USER', 'ACTIVE'),
+(4, 'user3', '123456', 'Lê Hoàng Cường', 'user3@domain1.com', '0933445566', 'Đà Nẵng', 'ROLE_USER', 'ACTIVE'),
 (5, 'nguyenvana', '123456', 'Nguyễn Văn A', 'nguyenvana@gmail.com', '0977889900', 'Hải Phòng', 'ROLE_USER', 'ACTIVE'),
 (6, 'tranthib', '123456', 'Trần Thị B', 'tranthib@gmail.com', '0966112233', 'Cần Thơ', 'ROLE_USER', 'ACTIVE'),
 (7, 'lethic', '123456', 'Lê Thị Cẩm', 'lethic@domain1.com', '0944556677', 'Huế', 'ROLE_USER', 'ACTIVE'),

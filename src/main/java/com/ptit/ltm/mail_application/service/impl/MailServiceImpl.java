@@ -76,19 +76,46 @@ public class MailServiceImpl {
     }
 
     public void copyIntoSent(final Message msg, Session session, String username, String password) {
-        log.info("(copyIntoSent) start");
+        log.info("(copyIntoSent) start for user: {}", username);
 
-        Folder folder;
+        // Danh sách tên thư mục Sent thường gặp trong hMailServer
+        String[] sentFolderNames = {"Sent", "SENT", "Sent Items", "Sent Messages", "sent"};
+
+        Store emailStore = null;
         try {
-            Store emailStore = (session.getStore("imap"));
-            emailStore.connect(username, password);
+            emailStore = session.getStore("imap");
+            emailStore.connect("127.0.0.1", 143, username, password);
 
-            folder = emailStore.getFolder("SENT");
+            Folder folder = null;
+            for (String folderName : sentFolderNames) {
+                try {
+                    Folder f = emailStore.getFolder(folderName);
+                    if (f != null && f.exists()) {
+                        folder = f;
+                        break;
+                    }
+                } catch (Exception ignored) {}
+            }
+
+            if (folder == null) {
+                // Tạo thư mục Sent nếu chưa tồn tại
+                folder = emailStore.getFolder("Sent");
+                if (!folder.exists()) {
+                    folder.create(Folder.HOLDS_MESSAGES);
+                }
+            }
+
             folder.open(Folder.READ_WRITE);
-
             folder.appendMessages(new Message[]{msg});
-        } catch (MessagingException e) {
-            throw new RuntimeException(e);
+            folder.close(false);
+            log.info("(copyIntoSent) copied to Sent folder successfully");
+        } catch (Exception e) {
+            // Không throw exception - việc copy vào Sent thất bại không ảnh hưởng đến việc gửi thư
+            log.warn("(copyIntoSent) failed to copy to Sent folder (non-critical): {}", e.getMessage());
+        } finally {
+            if (emailStore != null) {
+                try { emailStore.close(); } catch (Exception ignored) {}
+            }
         }
     }
 

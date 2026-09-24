@@ -31,7 +31,7 @@ public class DataInitService implements CommandLineRunner {
             log.info("Initializing default users in MySQL database...");
             User user1 = User.builder()
                     .username("user1")
-                    .password("user1")
+                    .password("123456")
                     .fullName("Nguyễn Văn User 1")
                     .email("user1@domain1.com")
                     .phoneNumber("0912345678")
@@ -42,7 +42,7 @@ public class DataInitService implements CommandLineRunner {
 
             User user2 = User.builder()
                     .username("user2")
-                    .password("user2")
+                    .password("123456")
                     .fullName("Trần Thị User 2")
                     .email("user2@domain1.com")
                     .phoneNumber("0987654321")

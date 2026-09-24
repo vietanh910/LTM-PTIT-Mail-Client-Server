@@ -2,9 +2,11 @@ package com.ptit.ltm.mail_application.controller;
 
 import com.google.gson.Gson;
 import com.ptit.ltm.mail_application.dto.SendMailRequest;
+import com.ptit.ltm.mail_application.entity.EmailLog;
 import com.ptit.ltm.mail_application.facade.impl.MailFacadeServiceImpl;
 import com.ptit.ltm.mail_application.model.Email;
 import com.ptit.ltm.mail_application.model.MailContent;
+import com.ptit.ltm.mail_application.repository.EmailLogRepository;
 import com.ptit.ltm.mail_application.utils.Utils;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
@@ -15,18 +17,17 @@ import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.json.JSONObject;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StreamUtils;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
@@ -35,6 +36,7 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class MailController {
     private final MailFacadeServiceImpl mailFacadeService;
+    private final EmailLogRepository emailLogRepository;
 
     private String getSessionUsername(HttpSession session) {
         return Objects.nonNull(session.getAttribute("username")) ?
@@ -212,8 +214,106 @@ public class MailController {
 
     @GetMapping("/detail/{id}")
     public String detailMail(@PathVariable("id") String id, Model model, HttpSession httpSession) {
-        log.info("(detailMail) lay ra chi tiet thu: {}", id);
+        log.info("(detailMail) lay ra chi tiet thu va danh dau da doc: {}", id);
+        try {
+            Long numericId = Long.parseLong(id);
+            emailLogRepository.markAsReadByIds(List.of(numericId));
+        } catch (NumberFormatException e) {
+            emailLogRepository.markAsReadByUuids(List.of(id));
+        } catch (Exception e) {
+            log.warn("Khong the danh dau da doc cho thu {}: {}", id, e.getMessage());
+        }
         model.addAttribute("currentUser", getSessionUsername(httpSession));
         return "detailMail";
+    }
+
+    // =================== THÙNG RÁC ===================
+
+    @GetMapping("/trash")
+    public String trash(Model model, HttpSession httpSession) {
+        log.info("(trash) lay ra thu da xoa");
+        String username = getSessionUsername(httpSession);
+        List<EmailLog> deletedLogs = emailLogRepository.findDeletedByOwner(username);
+        List<Email> emails = deletedLogs.stream()
+                .map(mailFacadeService::convertLogToEmail)
+                .toList();
+        model.addAttribute("emails", emails);
+        model.addAttribute("currentUser", username);
+        return "trash";
+    }
+
+    // =================== XÓA MỀM HÀNG LOẠT ===================
+
+    @PostMapping("/mail/delete")
+    @ResponseBody
+    public ResponseEntity<String> deleteMails(@RequestBody List<String> ids, HttpSession httpSession) {
+        log.info("(deleteMails) xoa mem {} thu", ids != null ? ids.size() : 0);
+        if (ids == null || ids.isEmpty()) {
+            return ResponseEntity.badRequest().body("Không có thư nào được chọn");
+        }
+        java.util.List<Long> numericIds = new java.util.ArrayList<>();
+        java.util.List<String> uuidList = new java.util.ArrayList<>();
+        for (String idStr : ids) {
+            try {
+                numericIds.add(Long.parseLong(idStr));
+            } catch (NumberFormatException e) {
+                uuidList.add(idStr);
+            }
+        }
+        if (!numericIds.isEmpty()) {
+            emailLogRepository.softDeleteByIds(numericIds, LocalDateTime.now());
+        }
+        if (!uuidList.isEmpty()) {
+            emailLogRepository.softDeleteByUuids(uuidList, LocalDateTime.now());
+        }
+        return ResponseEntity.ok("Đã chuyển " + ids.size() + " thư vào thùng rác");
+    }
+
+    // =================== ĐÁNH DẤU ĐÃ ĐỌC HÀNG LOẠT ===================
+
+    @PostMapping("/mail/mark-read")
+    @ResponseBody
+    public ResponseEntity<String> markAsRead(@RequestBody List<String> ids, HttpSession httpSession) {
+        log.info("(markAsRead) danh dau da doc {} thu", ids != null ? ids.size() : 0);
+        if (ids == null || ids.isEmpty()) {
+            return ResponseEntity.badRequest().body("Không có thư nào được chọn");
+        }
+        java.util.List<Long> numericIds = new java.util.ArrayList<>();
+        java.util.List<String> uuidList = new java.util.ArrayList<>();
+        for (String idStr : ids) {
+            try {
+                numericIds.add(Long.parseLong(idStr));
+            } catch (NumberFormatException e) {
+                uuidList.add(idStr);
+            }
+        }
+        if (!numericIds.isEmpty()) {
+            emailLogRepository.markAsReadByIds(numericIds);
+        }
+        if (!uuidList.isEmpty()) {
+            emailLogRepository.markAsReadByUuids(uuidList);
+        }
+        return ResponseEntity.ok("Đã đánh dấu " + ids.size() + " thư là đã đọc");
+    }
+
+    // =================== KHÔI PHỤC THƯ TỪ THÙNG RÁC ===================
+
+    @PostMapping("/mail/restore")
+    @ResponseBody
+    public ResponseEntity<String> restoreMails(@RequestBody List<String> ids, HttpSession httpSession) {
+        log.info("(restoreMails) khoi phuc {} thu", ids != null ? ids.size() : 0);
+        if (ids == null || ids.isEmpty()) {
+            return ResponseEntity.badRequest().body("Không có thư nào được chọn");
+        }
+        java.util.List<Long> numericIds = new java.util.ArrayList<>();
+        for (String idStr : ids) {
+            try {
+                numericIds.add(Long.parseLong(idStr));
+            } catch (Exception ignored) {}
+        }
+        if (!numericIds.isEmpty()) {
+            emailLogRepository.restoreByIds(numericIds);
+        }
+        return ResponseEntity.ok("Đã khôi phục " + ids.size() + " thư thành công");
     }
 }

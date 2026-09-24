@@ -9,9 +9,10 @@ import java.util.UUID;
 
 @Data
 @Builder
-@AllArgsConstructor(staticName = "of")
+@AllArgsConstructor
 @NoArgsConstructor
 public class Email {
+    @Builder.Default
     private String id = UUID.randomUUID().toString();
     private String fromAddress;
     private String toAddress;
@@ -19,5 +20,24 @@ public class Email {
     private String content;
     private String date;
     private boolean isReplying;
-    
+    private Long dbId;
+    @Builder.Default
+    private boolean read = false;
+    @Builder.Default
+    private boolean deleted = false;
+
+    public static Email of(String id, String fromAddress, String toAddress, String subject, String content, String date, boolean isReplying) {
+        return Email.builder()
+                .id(id)
+                .fromAddress(fromAddress)
+                .toAddress(toAddress)
+                .subject(subject)
+                .content(content)
+                .date(date)
+                .isReplying(isReplying)
+                .read(false)
+                .deleted(false)
+                .build();
+    }
 }
+

@@ -7,101 +7,186 @@
     <script src="/js/lib/tailwind/tailwind.config.js"></script>
     <link href="/js/lib/quill/quill.bubble.css" rel="stylesheet">
 </head>
-<body>
+<body class="bg-gray-100 font-sans antialiased">
 <div th:replace="~{fragments/header :: header}">...</div>
 <div class="flex">
     <div th:replace="~{fragments/drawer :: drawer}">...</div>
-    <div class="min-h-screen rounded-lg flex flex-1 bg-gray-50">
-        <div class="flex-1">
-            <table
-                    class="w-full text-sm text-left text-gray-500 dark:text-gray-400"
-            >
-                <thead
-                        class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"
-                >
+    <div class="min-h-screen rounded-lg flex flex-1 bg-gray-50 flex-col p-4">
+        
+        <!-- Toolbar hành động hàng loạt -->
+        <div class="flex items-center justify-between bg-white px-5 py-3 rounded-t-lg border-b border-gray-200 shadow-sm">
+            <div class="flex items-center space-x-3">
+                <input id="selectAll" type="checkbox" onchange="toggleSelectAll(this)"
+                       class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
+                <label for="selectAll" class="text-sm font-medium text-gray-700 cursor-pointer">Chọn tất cả</label>
+                <span id="selectedCountBadge" class="hidden text-xs bg-blue-100 text-blue-800 font-semibold px-2.5 py-0.5 rounded-full">
+                    Đã chọn <span id="selectedCount">0</span> thư
+                </span>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+                <!-- Nút Xóa thư -->
+                <button type="button" onclick="bulkDelete()" id="btnDelete"
+                        class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 focus:ring-2 focus:ring-red-300 transition">
+                    <svg class="w-4 h-4 mr-1 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                    Xóa thư đã chọn
+                </button>
+            </div>
+        </div>
+
+        <div class="flex-1 bg-white rounded-b-lg shadow-sm overflow-hidden">
+            <table class="w-full text-sm text-left text-gray-500">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-100/70 border-b border-gray-200">
                 <tr>
-                    <th class="px-6 py-3 w-[10%]" scope="col">Nguời nhận</th>
-                    <th class="px-6 py-3 w-[20%]" scope="col">Tiêu đề</th>
-                    <th class="px-6 py-3 w-[55%]" scope="col">Nội dung</th>
-                    <th class="px-6 py-3 w-[15%]" scope="col">Thời gian gửi</th>
+                    <th class="px-4 py-3 w-[4%]" scope="col"></th>
+                    <th class="px-4 py-3 w-[18%]" scope="col">Người nhận</th>
+                    <th class="px-6 py-3 w-[25%]" scope="col">Tiêu đề</th>
+                    <th class="px-6 py-3 w-[40%]" scope="col">Nội dung</th>
+                    <th class="px-4 py-3 w-[13%]" scope="col">Thời gian gửi</th>
                 </tr>
                 </thead>
-                <tbody>
-                <tr
-                        class="bg-white border-b dark:bg-gray-800 dark:border-gray-700"
-                    th:attr="onClick=|getDetailMail('${email.id}')|"
-                        th:each="email : ${emails}"
-                >
-                    <th
-                            class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
-                            scope="row"
-                    >
-                        <div th:text="${email.toAddress}"></div>
-                    </th>
-                    <td class="px-6 py-4">
-                        <a
-                    th:id="${email.id}"
-                    class="truncate max-w-[250px]"
-                    th:text="${email.subject}"
-                    th:attr="onClick=|getDetailMail('${email.id}')|"
-                  >
-                    Inside the Box October Product Update Inside the Box October
-                    Product Update Inside the Box October Product Update
-                  </a>
+                <tbody class="divide-y divide-gray-100">
+                <tr th:each="email : ${emails}"
+                    class="bg-white border-b hover:bg-gray-50 transition duration-150 cursor-pointer"
+                    th:attr="onClick=|handleRowClick(event, '${email.id}')|">
+                    
+                    <!-- Checkbox chọn từng thư -->
+                    <td class="px-4 py-4 text-center" onclick="event.stopPropagation();">
+                        <input type="checkbox" th:value="${email.id}" onchange="updateSelection()"
+                               class="mail-checkbox w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
                     </td>
-                    <td class="px-6 py-4 truncate w-[55%]">
-                        <div class="truncate max-w-[800px]"
+                    
+                    <td class="px-4 py-4 font-medium text-gray-900 whitespace-nowrap">
+                        <div th:text="${email.toAddress}"></div>
+                    </td>
+                    
+                    <td class="px-6 py-4">
+                        <a th:id="${email.id}"
+                           class="truncate max-w-[280px] block text-gray-900 font-medium"
+                           th:text="${email.subject}">
+                        </a>
+                    </td>
+                    
+                    <td class="px-6 py-4 truncate max-w-[450px]">
+                        <div class="truncate text-gray-500 font-normal"
                              th:id="'content-' + ${email.id}"
-                             th:text="${email.content}"
-                        >
-                            LaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptopLaptop
+                             th:text="${email.content}">
                         </div>
                     </td>
-                    <td class="px-6 py-4" th:text="${email.date}"></td>
+                    
+                    <td class="px-4 py-4 text-gray-500 text-xs whitespace-nowrap" th:text="${email.date}">
+                    </td>
                 </tr>
                 <tr th:if="${#lists.isEmpty(emails)}">
-                    <td colspan="4" class="px-6 py-8 text-center text-gray-400">Không có thư nào trong Thư đã gửi</td>
+                    <td colspan="5" class="px-6 py-12 text-center text-gray-400">
+                        <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                        </svg>
+                        Không có thư nào trong Thư đã gửi
+                    </td>
                 </tr>
                 </tbody>
             </table>
         </div>
-      </div>
     </div>
+</div>
 
-    <script src="/js/lib/quill/quill.js"></script>
-    <script th:inline="javascript">
-      /*<![CDATA[*/
-      const emails = /*[[${emails}]]*/ [];
-      /*]]>*/
-      for (let i = 0; i < emails.length; i++) {
+<script src="/js/lib/quill/quill.js"></script>
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    const emails = /*[[${emails}]]*/ [];
+    /*]]>*/
+    for (let i = 0; i < emails.length; i++) {
         const email = emails[i];
         if (!email) continue;
         const container = document.querySelector(`#content-${email.id}`);
         if (!container) continue;
 
         try {
-          const parsed = JSON.parse(email.content);
-          const quill = new Quill(`#content-${email.id}`, {
-            theme: "bubble",
-            readOnly: true,
-          });
-          quill.setContents(parsed);
-          quill.root.innerHTML = `<p class="truncate w-[55%]">${
-            email.subject
-          } - ${quill.getText()}</p>`;
+            const parsed = JSON.parse(email.content);
+            const quill = new Quill(`#content-${email.id}`, {
+                theme: 'bubble',
+                readOnly: true,
+            });
+            quill.setContents(parsed);
+            quill.root.innerHTML = `<p class="truncate text-gray-500">${quill.getText()}</p>`;
         } catch (e) {
-          container.innerText = email.content || '';
+            container.innerText = email.content || '';
         }
-      }
+    }
 
-      function getDetailMail(id) {
+    function handleRowClick(event, id) {
+        if (event.target.tagName.toLowerCase() === 'input') return;
+        getDetailMail(id);
+    }
+
+    function getDetailMail(id) {
         const email = emails.find((email) => email.id == id);
         if (email) {
-          localStorage.setItem("email", JSON.stringify(email));
-          localStorage.setItem("author", "me");
-          window.location.href = "/detail/" + id;
+            localStorage.setItem("email", JSON.stringify(email));
+            localStorage.setItem("author", "me");
+            window.location.href = "/detail/" + id;
         }
-      }
-    </script>
-  </body>
+    }
+
+    function toggleSelectAll(master) {
+        const checkboxes = document.querySelectorAll('.mail-checkbox');
+        checkboxes.forEach(cb => cb.checked = master.checked);
+        updateSelection();
+    }
+
+    function updateSelection() {
+        const checkboxes = document.querySelectorAll('.mail-checkbox');
+        const checked = Array.from(checkboxes).filter(cb => cb.checked);
+        const count = checked.length;
+        
+        const badge = document.getElementById('selectedCountBadge');
+        const countEl = document.getElementById('selectedCount');
+        const selectAll = document.getElementById('selectAll');
+        
+        countEl.innerText = count;
+        if (count > 0) {
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+        
+        if (checkboxes.length > 0) {
+            selectAll.checked = (count === checkboxes.length);
+        }
+    }
+
+    function getSelectedIds() {
+        const checkboxes = document.querySelectorAll('.mail-checkbox:checked');
+        return Array.from(checkboxes).map(cb => cb.value);
+    }
+
+    function bulkDelete() {
+        const ids = getSelectedIds();
+        if (ids.length === 0) {
+            alert("Vui lòng chọn ít nhất một thư để xóa.");
+            return;
+        }
+
+        if (!confirm(`Bạn có chắc chắn muốn chuyển ${ids.length} thư đã chọn vào Thùng rác?`)) {
+            return;
+        }
+
+        fetch('/mail/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ids)
+        })
+        .then(res => res.text())
+        .then(msg => {
+            window.location.reload();
+        })
+        .catch(err => alert("Có lỗi xảy ra: " + err));
+    }
+</script>
+
+</body>
 </html>
+

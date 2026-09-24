@@ -1,3 +1,19 @@
+USE mail_db;
+
+INSERT INTO spam_rules (rule_type, pattern, action, is_active, description)
+VALUES ('KEYWORD_BLOCK', 'từ khóa cần chặn', 'MOVE_TO_SPAM', 1, 'Mô tả ngắn gọn');
+
+
+
+
+
+
+
+
+
+
+
+
  Hướng dẫn khởi chạy nhanh:
 Mở và tạo Domain (domain1.com) cùng tài khoản (user1@domain1.com, user2@domain1.com) trong hMailServer.
 Khởi chạy ứng dụng bằng cách run
