@@ -42,8 +42,9 @@
               type="text"
               id="search-navbar"
               class="block w-full p-2 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-              placeholder="Search..."
+              placeholder="Tìm kiếm theo tiêu đề, người gửi, nội dung..."
             />
+            <p id="search-count" class="absolute right-3 top-2.5 text-xs text-gray-400 hidden"></p>
           </div>
         </div>
         <div>
@@ -89,11 +90,55 @@
         </div>
       </div>
       <script>
+        // ── User dropdown toggle ──
         const button = document.querySelector("#user-menu-button");
         const menu = document.querySelector("#user-dropdown");
         button.onclick = () => {
           menu.classList.toggle("hidden");
         };
+
+        // ── Tìm kiếm real-time trong bảng email ──
+        document.addEventListener("DOMContentLoaded", function () {
+          const searchInput = document.getElementById("search-navbar");
+          const countEl     = document.getElementById("search-count");
+          if (!searchInput) return;
+
+          searchInput.addEventListener("keyup", function () {
+            const keyword = searchInput.value.trim().toLowerCase();
+            // Lấy tất cả hàng trong bảng email (tbody tr)
+            const rows = document.querySelectorAll("tbody tr");
+            let visibleCount = 0;
+
+            rows.forEach(function (row) {
+              // Bỏ qua hàng "Không có thư nào"
+              if (row.querySelector("td[colspan]")) {
+                row.style.display = keyword === "" ? "" : "none";
+                return;
+              }
+              const text = row.innerText.toLowerCase();
+              if (keyword === "" || text.includes(keyword)) {
+                row.style.display = "";
+                visibleCount++;
+              } else {
+                row.style.display = "none";
+              }
+            });
+
+            // Hiện số kết quả
+            if (keyword !== "" && rows.length > 0) {
+              countEl.textContent = visibleCount + " kết quả";
+              countEl.classList.remove("hidden");
+            } else {
+              countEl.classList.add("hidden");
+            }
+
+            // Hiện thông báo "không tìm thấy" nếu cần
+            const noResult = document.getElementById("no-search-result");
+            if (noResult) {
+              noResult.style.display = (keyword !== "" && visibleCount === 0) ? "" : "none";
+            }
+          });
+        });
       </script>
     </nav>
   </body>

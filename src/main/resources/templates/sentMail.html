@@ -49,13 +49,13 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                 <tr th:each="email : ${emails}"
-                    class="bg-white border-b hover:bg-gray-50 transition duration-150 cursor-pointer"
+                    class="mail-row bg-white border-b hover:bg-gray-50 transition duration-150 cursor-pointer"
                     th:attr="onClick=|handleRowClick(event, '${email.id}')|">
                     
                     <!-- Checkbox chọn từng thư -->
                     <td class="px-4 py-4 text-center" onclick="event.stopPropagation();">
                         <input type="checkbox" th:value="${email.id}" onchange="updateSelection()"
-                               class="mail-checkbox w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
+                                class="mail-checkbox w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
                     </td>
                     
                     <td class="px-4 py-4 font-medium text-gray-900 whitespace-nowrap">
@@ -63,10 +63,17 @@
                     </td>
                     
                     <td class="px-6 py-4">
-                        <a th:id="${email.id}"
-                           class="truncate max-w-[280px] block text-gray-900 font-medium"
-                           th:text="${email.subject}">
-                        </a>
+                        <div class="flex items-center space-x-1.5">
+                            <span th:if="${email.hasAttachment}" title="Có tệp đính kèm" class="text-blue-600 flex-shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                                </svg>
+                            </span>
+                            <a th:id="${email.id}"
+                               class="truncate max-w-[280px] block text-gray-900 font-medium"
+                               th:text="${email.subject}">
+                            </a>
+                        </div>
                     </td>
                     
                     <td class="px-6 py-4 truncate max-w-[450px]">
@@ -89,6 +96,23 @@
                 </tr>
                 </tbody>
             </table>
+
+            <!-- Thanh điều hướng phân trang -->
+            <div id="pagination-container" class="flex flex-col sm:flex-row items-center justify-between px-6 py-4 bg-gray-50 border-t border-gray-200 text-sm text-gray-600 gap-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs sm:text-sm font-medium text-gray-700">Hiển thị:</span>
+                    <select id="pageSizeSelect" onchange="changePageSize(this.value)" class="bg-white border border-gray-300 text-gray-700 text-xs sm:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 shadow-sm">
+                        <option value="10">10 thư / trang</option>
+                        <option value="20">20 thư / trang</option>
+                        <option value="50">50 thư / trang</option>
+                        <option value="100">100 thư / trang</option>
+                    </select>
+                    <span id="pageSummary" class="text-xs text-gray-500 ml-1"></span>
+                </div>
+                <div class="flex items-center space-x-1" id="paginationControls">
+                    <!-- Nút phân trang tạo tự động bằng JS -->
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -131,30 +155,160 @@
         }
     }
 
+    // ==================== PHÂN TRANG (PAGINATION) ====================
+    let currentPage = 1;
+    let pageSize = parseInt(localStorage.getItem('mailPageSize')) || 10;
+
+    const pageSizeSelect = document.getElementById('pageSizeSelect');
+    if (pageSizeSelect) {
+        pageSizeSelect.value = pageSize.toString();
+    }
+
+    function changePageSize(newSize) {
+        pageSize = parseInt(newSize);
+        localStorage.setItem('mailPageSize', pageSize);
+        currentPage = 1;
+        renderPage();
+    }
+
+    function goToPage(page) {
+        const rows = document.querySelectorAll('.mail-row');
+        const totalPages = Math.ceil(rows.length / pageSize) || 1;
+        if (page < 1) page = 1;
+        if (page > totalPages) page = totalPages;
+        currentPage = page;
+        renderPage();
+    }
+
+    function renderPage() {
+        const rows = document.querySelectorAll('.mail-row');
+        const totalItems = rows.length;
+        const totalPages = Math.ceil(totalItems / pageSize) || 1;
+
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startIndex = (currentPage - 1) * pageSize;
+        const endIndex = Math.min(startIndex + pageSize, totalItems);
+
+        rows.forEach((row, index) => {
+            if (index >= startIndex && index < endIndex) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // Cập nhật tóm tắt số lượng
+        const summaryEl = document.getElementById('pageSummary');
+        if (summaryEl) {
+            if (totalItems === 0) {
+                summaryEl.innerText = '(0 thư)';
+            } else {
+                summaryEl.innerText = `(${startIndex + 1} - ${endIndex} / ${totalItems} thư)`;
+            }
+        }
+
+        renderPaginationControls(totalPages);
+        updateSelection();
+    }
+
+    function renderPaginationControls(totalPages) {
+        const container = document.getElementById('paginationControls');
+        if (!container) return;
+
+        if (totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+
+        let html = '';
+        const isFirst = (currentPage === 1);
+        const isLast = (currentPage === totalPages);
+
+        html += `
+            <button type="button" onclick="goToPage(1)" ${isFirst ? 'disabled' : ''} title="Trang đầu"
+                    class="px-2.5 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+                &laquo;
+            </button>
+            <button type="button" onclick="goToPage(${currentPage - 1})" ${isFirst ? 'disabled' : ''} title="Trang trước"
+                    class="px-2.5 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+                &lsaquo;
+            </button>
+        `;
+
+        let startPage = Math.max(1, currentPage - 2);
+        let endPage = Math.min(totalPages, currentPage + 2);
+
+        if (startPage > 1) {
+            html += `<span class="px-1.5 py-1 text-xs text-gray-400">...</span>`;
+        }
+
+        for (let p = startPage; p <= endPage; p++) {
+            if (p === currentPage) {
+                html += `
+                    <button type="button" class="px-3 py-1 text-xs font-bold rounded bg-blue-600 text-white shadow-sm">
+                        ${p}
+                    </button>
+                `;
+            } else {
+                html += `
+                    <button type="button" onclick="goToPage(${p})"
+                            class="px-3 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-700">
+                        ${p}
+                    </button>
+                `;
+            }
+        }
+
+        if (endPage < totalPages) {
+            html += `<span class="px-1.5 py-1 text-xs text-gray-400">...</span>`;
+        }
+
+        html += `
+            <button type="button" onclick="goToPage(${currentPage + 1})" ${isLast ? 'disabled' : ''} title="Trang sau"
+                    class="px-2.5 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+                &rsaquo;
+            </button>
+            <button type="button" onclick="goToPage(${totalPages})" ${isLast ? 'disabled' : ''} title="Trang cuối"
+                    class="px-2.5 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+                &raquo;
+            </button>
+        `;
+
+        container.innerHTML = html;
+    }
+
+    // Khởi tạo phân trang ngay khi tải trang
+    renderPage();
+
     function toggleSelectAll(master) {
-        const checkboxes = document.querySelectorAll('.mail-checkbox');
-        checkboxes.forEach(cb => cb.checked = master.checked);
+        const visibleCheckboxes = document.querySelectorAll('.mail-row:not([style*="display: none"]) .mail-checkbox');
+        visibleCheckboxes.forEach(cb => cb.checked = master.checked);
         updateSelection();
     }
 
     function updateSelection() {
-        const checkboxes = document.querySelectorAll('.mail-checkbox');
-        const checked = Array.from(checkboxes).filter(cb => cb.checked);
+        const allCheckboxes = document.querySelectorAll('.mail-checkbox');
+        const checked = Array.from(allCheckboxes).filter(cb => cb.checked);
         const count = checked.length;
         
         const badge = document.getElementById('selectedCountBadge');
         const countEl = document.getElementById('selectedCount');
         const selectAll = document.getElementById('selectAll');
         
-        countEl.innerText = count;
-        if (count > 0) {
-            badge.classList.remove('hidden');
-        } else {
-            badge.classList.add('hidden');
+        if (countEl) countEl.innerText = count;
+        if (badge) {
+            if (count > 0) badge.classList.remove('hidden');
+            else badge.classList.add('hidden');
         }
         
-        if (checkboxes.length > 0) {
-            selectAll.checked = (count === checkboxes.length);
+        const visibleCheckboxes = document.querySelectorAll('.mail-row:not([style*="display: none"]) .mail-checkbox');
+        if (selectAll && visibleCheckboxes.length > 0) {
+            const visibleChecked = Array.from(visibleCheckboxes).filter(cb => cb.checked);
+            selectAll.checked = (visibleChecked.length === visibleCheckboxes.length);
+        } else if (selectAll) {
+            selectAll.checked = false;
         }
     }
 

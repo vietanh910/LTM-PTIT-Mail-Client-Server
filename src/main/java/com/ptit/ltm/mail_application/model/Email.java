@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Date;
 import java.util.UUID;
 
 @Data
@@ -19,12 +20,15 @@ public class Email {
     private String subject;
     private String content;
     private String date;
+    private Date rawDate;
     private boolean isReplying;
     private Long dbId;
     @Builder.Default
     private boolean read = false;
     @Builder.Default
     private boolean deleted = false;
+    private boolean hasAttachment;
+    private String attachmentName;
 
     public static Email of(String id, String fromAddress, String toAddress, String subject, String content, String date, boolean isReplying) {
         return Email.builder()

@@ -13,8 +13,15 @@ import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMultipart;
+import jakarta.mail.internet.MimeUtility;
 import jakarta.mail.util.ByteArrayDataSource;
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -185,7 +192,9 @@ public class MailServiceImpl {
 
             Message[] messages = folder.getMessages();
 
-            for (Message message : messages) {
+            // Duyệt từ thư mới nhất đến cũ nhất
+            for (int i = messages.length - 1; i >= 0; i--) {
+                Message message = messages[i];
                 String from = "";
                 if (message.getFrom() != null && message.getFrom().length > 0) {
                     from = extractEmail(message.getFrom()[0].toString());
@@ -202,19 +211,33 @@ public class MailServiceImpl {
                 String dateStr = mailDate != null ? simpleDateFormat.format(mailDate) : "";
 
                 String content = extractTextFromMessage(message);
+                List<String> attachments = extractAttachmentsFromMessage(message);
+                boolean hasAttachment = !attachments.isEmpty();
+                String attachmentName = hasAttachment ? String.join(";", attachments) : null;
 
-                Email email = Email.of(
-                        UUID.randomUUID().toString(),
-                        from,
-                        to,
-                        subject,
-                        content,
-                        dateStr,
-                        false
-                );
+                Email email = Email.builder()
+                        .id(UUID.randomUUID().toString())
+                        .fromAddress(from)
+                        .toAddress(to)
+                        .subject(subject)
+                        .content(content)
+                        .date(dateStr)
+                        .rawDate(mailDate)
+                        .isReplying(false)
+                        .hasAttachment(hasAttachment)
+                        .attachmentName(attachmentName)
+                        .build();
 
                 emails.add(email);
             }
+
+            // Sắp xếp đảm bảo thư mới nhất luôn ở đầu danh sách
+            emails.sort((e1, e2) -> {
+                if (e1.getRawDate() != null && e2.getRawDate() != null) {
+                    return e2.getRawDate().compareTo(e1.getRawDate());
+                }
+                return 0;
+            });
 
             folder.close(false);
             emailStore.close();
@@ -246,6 +269,14 @@ public class MailServiceImpl {
         StringBuilder result = new StringBuilder();
         for (int i = 0; i < multipart.getCount(); i++) {
             BodyPart bodyPart = multipart.getBodyPart(i);
+
+            // Bỏ qua các phần là tệp đính kèm khi trích xuất nội dung văn bản
+            String disposition = bodyPart.getDisposition();
+            String rawFileName = bodyPart.getFileName();
+            if (Part.ATTACHMENT.equalsIgnoreCase(disposition) || (rawFileName != null && !rawFileName.trim().isEmpty())) {
+                continue;
+            }
+
             if (bodyPart.isMimeType("text/plain")) {
                 result.append(bodyPart.getContent());
             } else if (bodyPart.isMimeType("text/html")) {
@@ -257,5 +288,143 @@ public class MailServiceImpl {
             }
         }
         return result.toString();
+    }
+
+    private List<String> extractAttachmentsFromMessage(Message message) {
+        List<String> attachments = new ArrayList<>();
+        try {
+            if (message.isMimeType("multipart/*")) {
+                Multipart multipart = (Multipart) message.getContent();
+                extractAttachmentsFromMultipart(multipart, attachments);
+            }
+        } catch (Exception e) {
+            log.warn("(extractAttachmentsFromMessage) error: {}", e.getMessage());
+        }
+        return attachments;
+    }
+
+    private void extractAttachmentsFromMultipart(Multipart multipart, List<String> attachments) throws MessagingException, IOException {
+        String uploadDir = System.getProperty("user.dir") + File.separator + "uploads" + File.separator;
+        File dir = new File(uploadDir);
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+
+        for (int i = 0; i < multipart.getCount(); i++) {
+            BodyPart bodyPart = multipart.getBodyPart(i);
+
+            try {
+                if (bodyPart.getContent() instanceof Multipart) {
+                    extractAttachmentsFromMultipart((Multipart) bodyPart.getContent(), attachments);
+                    continue;
+                }
+            } catch (Exception ignored) {}
+
+            String disposition = bodyPart.getDisposition();
+            String rawFileName = bodyPart.getFileName();
+
+            boolean isAttachment = false;
+            if (rawFileName != null && !rawFileName.trim().isEmpty()) {
+                isAttachment = true;
+            } else if (Part.ATTACHMENT.equalsIgnoreCase(disposition)) {
+                isAttachment = true;
+            }
+
+            if (isAttachment) {
+                String fileName = rawFileName != null ? MimeUtility.decodeText(rawFileName) : "attachment_" + System.currentTimeMillis();
+                String safeOriginal = fileName.replaceAll("[^a-zA-Z0-9._\\-]", "_");
+
+                // Kiểm tra xem file này đã tồn tại trong thư mục uploads chưa (do người gửi trên cùng máy đã lưu)
+                String savedFileName = null;
+                File[] existingFiles = dir.listFiles();
+                if (existingFiles != null) {
+                    for (File f : existingFiles) {
+                        if (f.getName().endsWith("_" + safeOriginal) || f.getName().equalsIgnoreCase(safeOriginal)) {
+                            if (f.length() > 0) {
+                                savedFileName = f.getName();
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Nếu chưa có, lưu từ luồng dữ liệu của BodyPart
+                if (savedFileName == null) {
+                    savedFileName = System.currentTimeMillis() + "_" + safeOriginal;
+                    Path targetPath = Paths.get(uploadDir, savedFileName);
+                    try (InputStream is = bodyPart.getInputStream()) {
+                        Files.copy(is, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                    }
+                    log.info("(extractAttachments) Saved attachment to disk: {}", savedFileName);
+                }
+
+                if (!attachments.contains(savedFileName)) {
+                    attachments.add(savedFileName);
+                }
+            }
+        }
+    }
+
+    public void deleteMessageFromFolder(Session session, String username, String password, String folderName, String subject, String otherParty) {
+        log.info("(deleteMessageFromFolder) username: {}, folder: {}, subject: {}", username, folderName, subject);
+        Store emailStore = null;
+        try {
+            String mailStoreType = username != null && username.contains("gmail") ? "imaps" : "imap";
+            emailStore = session.getStore(mailStoreType);
+            emailStore.connect("127.0.0.1", 143, username, password);
+
+            List<String> candidateFolders = new ArrayList<>();
+            candidateFolders.add(folderName);
+            if ("SENT".equalsIgnoreCase(folderName)) {
+                candidateFolders.addAll(Arrays.asList("Sent", "SENT", "Sent Items", "Sent Messages", "sent"));
+            } else if ("SPAM".equalsIgnoreCase(folderName)) {
+                candidateFolders.addAll(Arrays.asList("Spam", "SPAM", "Junk", "Junk E-mail", "spam"));
+            } else if ("INBOX".equalsIgnoreCase(folderName)) {
+                candidateFolders.addAll(Arrays.asList("INBOX", "Inbox", "inbox"));
+            }
+
+            for (String fName : candidateFolders) {
+                Folder folder = null;
+                try {
+                    folder = emailStore.getFolder(fName);
+                } catch (Exception ignored) {}
+
+                if (folder != null && folder.exists()) {
+                    try {
+                        folder.open(Folder.READ_WRITE);
+                        Message[] messages = folder.getMessages();
+                        boolean found = false;
+                        for (int i = messages.length - 1; i >= 0; i--) {
+                            Message msg = messages[i];
+                            String msgSub = msg.getSubject() != null ? msg.getSubject() : "";
+                            String msgFrom = (msg.getFrom() != null && msg.getFrom().length > 0) ? extractEmail(msg.getFrom()[0].toString()) : "";
+                            String msgTo = (msg.getAllRecipients() != null && msg.getAllRecipients().length > 0) ? extractEmail(msg.getAllRecipients()[0].toString()) : "";
+
+                            boolean subMatch = (subject == null && msgSub.isEmpty()) || (subject != null && subject.equals(msgSub));
+                            boolean partyMatch = (otherParty == null) || msgFrom.equalsIgnoreCase(otherParty) || msgTo.equalsIgnoreCase(otherParty);
+
+                            if (subMatch && partyMatch) {
+                                msg.setFlag(Flags.Flag.DELETED, true);
+                                found = true;
+                                break;
+                            }
+                        }
+                        folder.close(true); // true = expunge
+                        if (found) {
+                            log.info("(deleteMessageFromFolder) Da xoa thu khoi IMAP folder {}", fName);
+                            break;
+                        }
+                    } catch (Exception e) {
+                        try { if (folder.isOpen()) folder.close(false); } catch (Exception ignored) {}
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("(deleteMessageFromFolder) failed: {}", e.getMessage());
+        } finally {
+            if (emailStore != null) {
+                try { emailStore.close(); } catch (Exception ignored) {}
+            }
+        }
     }
 }

@@ -19,7 +19,9 @@ import jakarta.mail.Session;
 import jakarta.mail.Store;
 import jakarta.mail.Transport;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -43,14 +45,29 @@ public class MailFacadeServiceImpl {
           .content(request.getContent())
           .build();
 
-    Message message = mailService.getSendMailMessage(
-          email,
-          file,
-          session
-    );
+    Message message = mailService.getSendMailMessage(email, file, session);
+
+    // Lưu file đính kèm lên đĩa
+    String savedFileName = null;
+    if (file != null && !file.isEmpty()) {
+      try {
+        String uploadDir = System.getProperty("user.dir") + "/uploads/";
+        java.io.File dir = new java.io.File(uploadDir);
+        if (!dir.exists()) dir.mkdirs();
+        // Đặt tên file: timestamp_originalName để tránh trùng
+        String safeOriginal = file.getOriginalFilename() != null
+                ? file.getOriginalFilename().replaceAll("[^a-zA-Z0-9._\\-]", "_")
+                : "attachment";
+        savedFileName = System.currentTimeMillis() + "_" + safeOriginal;
+        java.nio.file.Path targetPath = java.nio.file.Paths.get(uploadDir, savedFileName);
+        java.nio.file.Files.write(targetPath, file.getBytes());
+        log.info("(sendMail) attachment saved: {}", targetPath);
+      } catch (Exception e) {
+        log.warn("(sendMail) failed to save attachment: {}", e.getMessage());
+      }
+    }
 
     try {
-      // Gửi thư qua SMTP trước
       Transport transport = session.getTransport("smtp");
       transport.connect();
       transport.sendMessage(message, message.getAllRecipients());
@@ -64,12 +81,12 @@ public class MailFacadeServiceImpl {
               .subject(request.getSubject())
               .content(request.getContent())
               .mailType(MailType.SENT)
-              .hasAttachment(file != null && !file.isEmpty())
-              .attachmentName(file != null && !file.isEmpty() ? file.getOriginalFilename() : null)
+              .hasAttachment(savedFileName != null)
+              .attachmentName(savedFileName)
               .build();
       emailLogRepository.save(logEntry);
 
-      // Copy vào thư mục Sent sau khi gửi thành công (không throw nếu lỗi)
+      // Copy vào thư mục Sent sau khi gửi thành công
       mailService.copyIntoSent(
               message,
               sessionService.getReceiveMailSession(username),
@@ -154,6 +171,19 @@ public class MailFacadeServiceImpl {
       }
     }
 
+    // Đồng bộ ID, attachment và trạng thái đã xóa/đã đọc với MySQL
+    try {
+      syncInboxWithDb(emails, username);
+    } catch (Exception e) {
+      log.warn("Failed to sync inbox with db: {}", e.getMessage());
+    }
+
+    // Lọc bỏ những thư đã bị chuyển vào thùng rác
+    emails = emails.stream()
+        .filter(email -> !email.isDeleted())
+        .collect(Collectors.toList());
+
+    sortEmailsByDateDesc(emails);
     return emails;
   }
 
@@ -186,6 +216,19 @@ public class MailFacadeServiceImpl {
       }
     }
 
+    // Đồng bộ ID, attachment và trạng thái đã xóa với MySQL
+    try {
+      syncSentWithDb(emails, username);
+    } catch (Exception e) {
+      log.warn("Failed to sync sent with db: {}", e.getMessage());
+    }
+
+    // Lọc bỏ những thư đã bị chuyển vào thùng rác
+    emails = emails.stream()
+        .filter(email -> !email.isDeleted())
+        .collect(Collectors.toList());
+
+    sortEmailsByDateDesc(emails);
     return emails;
   }
 
@@ -229,12 +272,209 @@ public class MailFacadeServiceImpl {
       }
     }
 
+    // Đồng bộ ID và trạng thái đã xóa với MySQL
+    try {
+      syncSpamWithDb(allSpam, username);
+    } catch (Exception e) {
+      log.warn("Failed to sync spam with db: {}", e.getMessage());
+    }
+
+    // Lọc bỏ những thư đã bị chuyển vào thùng rác
+    allSpam = allSpam.stream()
+        .filter(email -> !email.isDeleted())
+        .collect(Collectors.toList());
+
+    sortEmailsByDateDesc(allSpam);
     return allSpam;
+  }
+
+  private void syncInboxWithDb(List<Email> emails, String username) {
+    if (emails == null || emails.isEmpty()) return;
+
+    List<EmailLog> userInboxLogs = emailLogRepository.findByRecipientOrderByCreatedAtDesc(username);
+    List<EmailLog> userSentLogs = emailLogRepository.findBySenderOrderByCreatedAtDesc(username);
+    Set<Long> usedLogIds = new HashSet<>();
+
+    for (Email email : emails) {
+      EmailLog matchedLog = null;
+      for (EmailLog log : userInboxLogs) {
+        if (!usedLogIds.contains(log.getId())
+            && log.getMailType() == MailType.INBOX
+            && log.getSubject() != null && log.getSubject().equals(email.getSubject())
+            && log.getSender() != null && log.getSender().equalsIgnoreCase(email.getFromAddress())) {
+          matchedLog = log;
+          break;
+        }
+      }
+
+      if (matchedLog != null) {
+        usedLogIds.add(matchedLog.getId());
+        email.setDbId(matchedLog.getId());
+        email.setId(String.valueOf(matchedLog.getId()));
+        email.setRead(matchedLog.isRead());
+        email.setDeleted(matchedLog.isDeleted());
+        if (matchedLog.isHasAttachment()) {
+          email.setHasAttachment(true);
+          email.setAttachmentName(matchedLog.getAttachmentName());
+        }
+      } else {
+        boolean hasAttach = email.isHasAttachment();
+        String attachName = email.getAttachmentName();
+
+        // Kiểm tra xem người gửi có bản ghi SENT với attachment không
+        if (!hasAttach) {
+          for (EmailLog sentLog : userSentLogs) {
+            if (sentLog.getSubject() != null && sentLog.getSubject().equals(email.getSubject())
+                && sentLog.isHasAttachment() && sentLog.getAttachmentName() != null) {
+              hasAttach = true;
+              attachName = sentLog.getAttachmentName();
+              break;
+            }
+          }
+        }
+
+        EmailLog newLog = EmailLog.builder()
+            .sender(email.getFromAddress())
+            .recipient(username)
+            .subject(email.getSubject())
+            .content(email.getContent())
+            .mailType(MailType.INBOX)
+            .hasAttachment(hasAttach)
+            .attachmentName(attachName)
+            .read(false)
+            .deleted(false)
+            .messageUuid(email.getId())
+            .build();
+        newLog = emailLogRepository.save(newLog);
+        usedLogIds.add(newLog.getId());
+
+        email.setDbId(newLog.getId());
+        email.setId(String.valueOf(newLog.getId()));
+        email.setRead(false);
+        email.setDeleted(false);
+        email.setHasAttachment(hasAttach);
+        email.setAttachmentName(attachName);
+      }
+    }
+  }
+
+  private void syncSentWithDb(List<Email> emails, String username) {
+    if (emails == null || emails.isEmpty()) return;
+
+    List<EmailLog> userSentLogs = emailLogRepository.findBySenderOrderByCreatedAtDesc(username);
+    Set<Long> usedLogIds = new HashSet<>();
+
+    for (Email email : emails) {
+      EmailLog matchedLog = null;
+      for (EmailLog log : userSentLogs) {
+        if (!usedLogIds.contains(log.getId())
+            && log.getMailType() == MailType.SENT
+            && log.getSubject() != null && log.getSubject().equals(email.getSubject())
+            && log.getRecipient() != null && log.getRecipient().equalsIgnoreCase(email.getToAddress())) {
+          matchedLog = log;
+          break;
+        }
+      }
+
+      if (matchedLog != null) {
+        usedLogIds.add(matchedLog.getId());
+        email.setDbId(matchedLog.getId());
+        email.setId(String.valueOf(matchedLog.getId()));
+        email.setDeleted(matchedLog.isDeleted());
+        email.setRead(matchedLog.isRead());
+        if (matchedLog.isHasAttachment()) {
+          email.setHasAttachment(true);
+          email.setAttachmentName(matchedLog.getAttachmentName());
+        }
+      } else {
+        EmailLog newLog = EmailLog.builder()
+            .sender(username)
+            .recipient(email.getToAddress())
+            .subject(email.getSubject())
+            .content(email.getContent())
+            .mailType(MailType.SENT)
+            .hasAttachment(email.isHasAttachment())
+            .attachmentName(email.getAttachmentName())
+            .read(true)
+            .deleted(false)
+            .messageUuid(email.getId())
+            .build();
+        newLog = emailLogRepository.save(newLog);
+        usedLogIds.add(newLog.getId());
+
+        email.setDbId(newLog.getId());
+        email.setId(String.valueOf(newLog.getId()));
+        email.setDeleted(false);
+      }
+    }
+  }
+
+  private void syncSpamWithDb(List<Email> emails, String username) {
+    if (emails == null || emails.isEmpty()) return;
+
+    List<EmailLog> userSpamLogs = emailLogRepository.findByRecipientOrderByCreatedAtDesc(username);
+    Set<Long> usedLogIds = new HashSet<>();
+
+    for (Email email : emails) {
+      EmailLog matchedLog = null;
+      for (EmailLog log : userSpamLogs) {
+        if (!usedLogIds.contains(log.getId())
+            && (log.isSpam() || log.getMailType() == MailType.SPAM)
+            && log.getSubject() != null && log.getSubject().equals(email.getSubject())
+            && log.getSender() != null && log.getSender().equalsIgnoreCase(email.getFromAddress())) {
+          matchedLog = log;
+          break;
+        }
+      }
+
+      if (matchedLog != null) {
+        usedLogIds.add(matchedLog.getId());
+        email.setDbId(matchedLog.getId());
+        email.setId(String.valueOf(matchedLog.getId()));
+        email.setDeleted(matchedLog.isDeleted());
+      } else {
+        EmailLog newLog = EmailLog.builder()
+            .sender(email.getFromAddress())
+            .recipient(username)
+            .subject(email.getSubject())
+            .content(email.getContent())
+            .mailType(MailType.SPAM)
+            .spam(true)
+            .hasAttachment(email.isHasAttachment())
+            .attachmentName(email.getAttachmentName())
+            .read(false)
+            .deleted(false)
+            .messageUuid(email.getId())
+            .build();
+        newLog = emailLogRepository.save(newLog);
+        usedLogIds.add(newLog.getId());
+
+        email.setDbId(newLog.getId());
+        email.setId(String.valueOf(newLog.getId()));
+        email.setDeleted(false);
+      }
+    }
+  }
+
+  public void sortEmailsByDateDesc(List<Email> emails) {
+    if (emails == null) return;
+    emails.sort((e1, e2) -> {
+      if (e1.getRawDate() != null && e2.getRawDate() != null) {
+        return e2.getRawDate().compareTo(e1.getRawDate());
+      }
+      if (e1.getRawDate() != null) return -1;
+      if (e2.getRawDate() != null) return 1;
+      return 0;
+    });
   }
 
   public Email convertLogToEmail(EmailLog log) {
     java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     String dateStr = log.getCreatedAt() != null ? log.getCreatedAt().format(formatter) : "";
+    java.util.Date rawDate = null;
+    if (log.getCreatedAt() != null) {
+      rawDate = java.util.Date.from(log.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant());
+    }
     return Email.builder()
             .id(log.getId() != null ? String.valueOf(log.getId()) : (log.getMessageUuid() != null ? log.getMessageUuid() : java.util.UUID.randomUUID().toString()))
             .fromAddress(log.getSender())
@@ -242,10 +482,13 @@ public class MailFacadeServiceImpl {
             .subject(log.getSubject() != null ? log.getSubject() : "(Không có tiêu đề)")
             .content(log.getContent() != null ? log.getContent() : "")
             .date(dateStr)
+            .rawDate(rawDate)
             .isReplying(false)
             .dbId(log.getId())
             .read(log.isRead())
             .deleted(log.isDeleted())
+            .hasAttachment(log.isHasAttachment())
+            .attachmentName(log.getAttachmentName())
             .build();
   }
 
@@ -273,5 +516,24 @@ public class MailFacadeServiceImpl {
 
     return emails;
 
+  }
+
+  public void deleteEmailPermanently(EmailLog logEntity, String username, String password) {
+    if (logEntity == null) return;
+    try {
+      Session session = sessionService.getReceiveMailSession(username);
+      String folderName = "INBOX";
+      String otherParty = logEntity.getSender();
+      if (logEntity.getMailType() == MailType.SENT) {
+        folderName = "SENT";
+        otherParty = logEntity.getRecipient();
+      } else if (logEntity.getMailType() == MailType.SPAM) {
+        folderName = "SPAM";
+        otherParty = logEntity.getSender();
+      }
+      mailService.deleteMessageFromFolder(session, username, password, folderName, logEntity.getSubject(), otherParty);
+    } catch (Exception e) {
+      log.warn("Failed to permanently delete email from IMAP: {}", e.getMessage());
+    }
   }
 }

@@ -24,8 +24,13 @@ public interface EmailLogRepository extends JpaRepository<EmailLog, Long> {
     List<EmailLog> findByRecipientAndDeletedFalseOrderByCreatedAtDesc(String recipient);
     List<EmailLog> findBySenderAndDeletedFalseOrderByCreatedAtDesc(String sender);
 
-    // --- Thùng rác: thư bị xóa của người nhận hoặc người gửi ---
-    @Query("SELECT e FROM EmailLog e WHERE e.deleted = true AND (e.recipient = :email OR e.sender = :email) ORDER BY e.deletedAt DESC")
+    // --- Thùng rác: thư bị xóa của người dùng hiện tại ---
+    @Query("SELECT e FROM EmailLog e WHERE e.deleted = true AND (" +
+           "(e.recipient = :email AND e.mailType = com.ptit.ltm.mail_application.entity.MailType.INBOX) OR " +
+           "(e.sender = :email AND e.mailType = com.ptit.ltm.mail_application.entity.MailType.SENT) OR " +
+           "(e.recipient = :email AND e.mailType = com.ptit.ltm.mail_application.entity.MailType.SPAM) OR " +
+           "(e.mailType IS NULL AND (e.recipient = :email OR e.sender = :email))) " +
+           "ORDER BY e.deletedAt DESC")
     List<EmailLog> findDeletedByOwner(@Param("email") String email);
 
     // --- Xóa mềm hàng loạt theo danh sách ID ---
@@ -55,5 +60,26 @@ public interface EmailLogRepository extends JpaRepository<EmailLog, Long> {
     @Transactional
     @Query("UPDATE EmailLog e SET e.deleted = false, e.deletedAt = null WHERE e.id IN :ids")
     void restoreByIds(@Param("ids") List<Long> ids);
+
+    // --- Xóa vĩnh viễn hàng loạt theo danh sách ID ---
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM EmailLog e WHERE e.id IN :ids")
+    void deleteByIds(@Param("ids") List<Long> ids);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM EmailLog e WHERE e.messageUuid IN :uuids")
+    void deleteByUuids(@Param("uuids") List<String> uuids);
+
+    // --- Dọn sạch toàn bộ thùng rác của người dùng ---
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM EmailLog e WHERE e.deleted = true AND (" +
+           "(e.recipient = :email AND e.mailType = com.ptit.ltm.mail_application.entity.MailType.INBOX) OR " +
+           "(e.sender = :email AND e.mailType = com.ptit.ltm.mail_application.entity.MailType.SENT) OR " +
+           "(e.recipient = :email AND e.mailType = com.ptit.ltm.mail_application.entity.MailType.SPAM) OR " +
+           "(e.mailType IS NULL AND (e.recipient = :email OR e.sender = :email)))")
+    void emptyTrashByOwner(@Param("email") String email);
 }
 

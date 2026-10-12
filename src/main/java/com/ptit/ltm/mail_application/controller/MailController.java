@@ -17,6 +17,9 @@ import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.json.JSONObject;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -27,6 +30,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -39,13 +45,13 @@ public class MailController {
     private final EmailLogRepository emailLogRepository;
 
     private String getSessionUsername(HttpSession session) {
-        return Objects.nonNull(session.getAttribute("username")) ?
-                session.getAttribute("username").toString() : "user2@domain1.com";
+        Object attr = session.getAttribute("username");
+        return attr != null ? attr.toString() : null;
     }
 
     private String getSessionPassword(HttpSession session) {
-        return Objects.nonNull(session.getAttribute("password")) ?
-                session.getAttribute("password").toString() : "user2";
+        Object attr = session.getAttribute("password");
+        return attr != null ? attr.toString() : "123456";
     }
 
     private String readTemplateJson(String fileName) {
@@ -234,9 +240,10 @@ public class MailController {
         log.info("(trash) lay ra thu da xoa");
         String username = getSessionUsername(httpSession);
         List<EmailLog> deletedLogs = emailLogRepository.findDeletedByOwner(username);
-        List<Email> emails = deletedLogs.stream()
+        List<Email> emails = new java.util.ArrayList<>(deletedLogs.stream()
                 .map(mailFacadeService::convertLogToEmail)
-                .toList();
+                .toList());
+        mailFacadeService.sortEmailsByDateDesc(emails);
         model.addAttribute("emails", emails);
         model.addAttribute("currentUser", username);
         return "trash";
@@ -316,4 +323,141 @@ public class MailController {
         }
         return ResponseEntity.ok("Đã khôi phục " + ids.size() + " thư thành công");
     }
+
+    // =================== XÓA VĨNH VIỄN KHỎI THÙNG RÁC ===================
+
+    @PostMapping("/mail/permanent-delete")
+    @ResponseBody
+    public ResponseEntity<String> permanentDeleteMails(@RequestBody List<String> ids, HttpSession httpSession) {
+        log.info("(permanentDeleteMails) xoa vinh vien {} thu", ids != null ? ids.size() : 0);
+        if (ids == null || ids.isEmpty()) {
+            return ResponseEntity.badRequest().body("Không có thư nào được chọn");
+        }
+        String username = getSessionUsername(httpSession);
+        String password = getSessionPassword(httpSession);
+
+        java.util.List<Long> numericIds = new java.util.ArrayList<>();
+        java.util.List<String> uuidList = new java.util.ArrayList<>();
+        for (String idStr : ids) {
+            try {
+                numericIds.add(Long.parseLong(idStr));
+            } catch (NumberFormatException e) {
+                uuidList.add(idStr);
+            }
+        }
+
+        java.util.List<EmailLog> logsToDelete = new java.util.ArrayList<>();
+        if (!numericIds.isEmpty()) {
+            logsToDelete.addAll(emailLogRepository.findAllById(numericIds));
+        }
+        for (EmailLog mailLog : logsToDelete) {
+            try {
+                mailFacadeService.deleteEmailPermanently(mailLog, username, password);
+            } catch (Exception e) {
+                log.warn("Lỗi khi xóa IMAP cho thư {}: {}", mailLog.getId(), e.getMessage());
+            }
+        }
+        if (!logsToDelete.isEmpty()) {
+            emailLogRepository.deleteAll(logsToDelete);
+        }
+        if (!numericIds.isEmpty()) {
+            emailLogRepository.deleteByIds(numericIds);
+        }
+        if (!uuidList.isEmpty()) {
+            emailLogRepository.deleteByUuids(uuidList);
+        }
+        return ResponseEntity.ok("Đã xóa vĩnh viễn " + ids.size() + " thư thành công");
+    }
+
+    // =================== DỌN SẠCH THÙNG RÁC ===================
+
+    @PostMapping("/mail/trash/empty")
+    @ResponseBody
+    public ResponseEntity<String> emptyTrash(HttpSession httpSession) {
+        String username = getSessionUsername(httpSession);
+        String password = getSessionPassword(httpSession);
+        log.info("(emptyTrash) don sach thung rac cho nguoi dung: {}", username);
+
+        java.util.List<EmailLog> deletedLogs = emailLogRepository.findDeletedByOwner(username);
+        if (deletedLogs != null && !deletedLogs.isEmpty()) {
+            for (EmailLog mailLog : deletedLogs) {
+                try {
+                    mailFacadeService.deleteEmailPermanently(mailLog, username, password);
+                } catch (Exception e) {
+                    log.warn("Lỗi khi xóa IMAP cho thư {}: {}", mailLog.getId(), e.getMessage());
+                }
+            }
+            emailLogRepository.deleteAll(deletedLogs);
+        }
+        emailLogRepository.emptyTrashByOwner(username);
+        return ResponseEntity.ok("Đã dọn sạch thùng rác thành công");
+    }
+
+    // =================== TẢI FILE ĐÍNH KÈM ===================
+
+    @GetMapping("/attachment/download")
+    public ResponseEntity<org.springframework.core.io.Resource> downloadAttachment(
+            @RequestParam("filename") String filename) {
+        try {
+            // Chỉ cho phép tên file hợp lệ, ngăn path traversal
+            String safeName = Paths.get(filename).getFileName().toString();
+            Path filePath = Paths.get(System.getProperty("user.dir"), "uploads", safeName);
+            org.springframework.core.io.Resource resource = new UrlResource(filePath.toUri());
+
+            if (!resource.exists() || !resource.isReadable()) {
+                log.warn("(downloadAttachment) file not found: {}", filePath);
+                return ResponseEntity.notFound().build();
+            }
+
+            // Lấy tên gốc: bỏ phần timestamp_ ở đầu nếu có (dạng 1234567890_filename.pdf)
+            String displayName = safeName.replaceFirst("^\\d+_", "");
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"" + displayName + "\"")
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .body(resource);
+
+        } catch (Exception e) {
+            log.error("(downloadAttachment) error: {}", e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    // =================== XEM FILE ĐÍNH KÈM TRỰC TIẾP (INLINE / PREVIEW) ===================
+
+    @GetMapping("/attachment/view")
+    public ResponseEntity<org.springframework.core.io.Resource> viewAttachment(
+            @RequestParam("filename") String filename) {
+        try {
+            String safeName = Paths.get(filename).getFileName().toString();
+            Path filePath = Paths.get(System.getProperty("user.dir"), "uploads", safeName);
+            org.springframework.core.io.Resource resource = new UrlResource(filePath.toUri());
+
+            if (!resource.exists() || !resource.isReadable()) {
+                log.warn("(viewAttachment) file not found: {}", filePath);
+                return ResponseEntity.notFound().build();
+            }
+
+            String contentType = null;
+            try {
+                contentType = Files.probeContentType(filePath);
+            } catch (Exception ignored) {}
+            if (contentType == null) {
+                contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+            }
+
+            String displayName = safeName.replaceFirst("^\\d+_", "");
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + displayName + "\"")
+                    .body(resource);
+
+        } catch (Exception e) {
+            log.error("(viewAttachment) error: {}", e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 }
+
