@@ -43,6 +43,7 @@ import java.util.Objects;
 public class MailController {
     private final MailFacadeServiceImpl mailFacadeService;
     private final EmailLogRepository emailLogRepository;
+    private final com.ptit.ltm.mail_application.service.impl.RecipientValidationService recipientValidationService;
 
     private String getSessionUsername(HttpSession session) {
         Object attr = session.getAttribute("username");
@@ -102,11 +103,15 @@ public class MailController {
     public String sendMail(@RequestParam(value = "template", required = false) String template,
                            @RequestParam(value = "replyTo", required = false) String replyTo,
                            @RequestParam(value = "subject", required = false) String replySubject,
+                           @RequestParam(value = "toAddress", required = false) String toAddressParam,
+                           @RequestParam(value = "error", required = false) String error,
                            Model model, HttpSession httpSession) {
-        log.info("Giao dien gui mail, template={}, replyTo={}", template, replyTo);
+        log.info("Giao dien gui mail, template={}, replyTo={}, toAddress={}", template, replyTo, toAddressParam);
         Email email = new Email();
         if (replyTo != null && !replyTo.trim().isEmpty()) {
             email.setToAddress(replyTo);
+        } else if (toAddressParam != null && !toAddressParam.trim().isEmpty()) {
+            email.setToAddress(toAddressParam);
         }
         if (replySubject != null && !replySubject.trim().isEmpty()) {
             email.setSubject(replySubject);
@@ -126,6 +131,9 @@ public class MailController {
                 email.setContent(readTemplateJson("thanks-mail.json"));
             }
         }
+        if (error != null) {
+            model.addAttribute("error", error);
+        }
         model.addAttribute("email", email);
         model.addAttribute("currentUser", getSessionUsername(httpSession));
         return "sendMail";
@@ -138,8 +146,58 @@ public class MailController {
         String username = getSessionUsername(httpSession);
         String password = getSessionPassword(httpSession);
 
-        mailFacadeService.sendMail(sendMailRequest, file, username, password);
-        return "redirect:/sent";
+        // 1. Kiểm tra tính hợp lệ của người nhận trước khi gửi
+        com.ptit.ltm.mail_application.service.impl.RecipientValidationService.ValidationResult validation =
+                recipientValidationService.validateRecipient(sendMailRequest.getToAddress());
+        if (!validation.isExists()) {
+            log.warn("(sendMail) Nguoi nhan khong ton tai: {}", validation.getMessage());
+            String err = validation.getMessage() != null ? validation.getMessage() : "Địa chỉ email người nhận không tồn tại!";
+            return "redirect:/send?error=" + urlEncode(err)
+                    + "&toAddress=" + urlEncode(sendMailRequest.getToAddress())
+                    + "&subject=" + urlEncode(sendMailRequest.getSubject());
+        }
+
+        // Cập nhật địa chỉ đã chuẩn hóa nếu có
+        if (validation.getNormalizedEmail() != null && !validation.getNormalizedEmail().isEmpty()) {
+            sendMailRequest.setToAddress(validation.getNormalizedEmail());
+        }
+
+        // 2. Tiến hành gửi mail
+        try {
+            mailFacadeService.sendMail(sendMailRequest, file, username, password);
+            return "redirect:/sent";
+        } catch (Exception e) {
+            log.error("(sendMail) Loi khi gui email: {}", e.getMessage());
+            String errMsg = "Không thể gửi thư: ";
+            String lower = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+            if (lower.contains("550") || lower.contains("unknown user") || lower.contains("invalid addresses") || lower.contains("recipient")) {
+                errMsg = "Địa chỉ email người nhận không tồn tại!";
+            } else {
+                errMsg += (e.getMessage() != null ? e.getMessage() : "Lỗi máy chủ thư");
+            }
+            return "redirect:/send?error=" + urlEncode(errMsg)
+                    + "&toAddress=" + urlEncode(sendMailRequest.getToAddress())
+                    + "&subject=" + urlEncode(sendMailRequest.getSubject());
+        }
+    }
+
+    @GetMapping("/api/check-recipient")
+    @ResponseBody
+    public ResponseEntity<com.ptit.ltm.mail_application.service.impl.RecipientValidationService.ValidationResult> checkRecipient(
+            @RequestParam("email") String email) {
+        log.info("(checkRecipient) Kiem tra email nguoi nhan: {}", email);
+        com.ptit.ltm.mail_application.service.impl.RecipientValidationService.ValidationResult result =
+                recipientValidationService.validateRecipient(email);
+        return ResponseEntity.ok(result);
+    }
+
+    private String urlEncode(String value) {
+        if (value == null) return "";
+        try {
+            return java.net.URLEncoder.encode(value, StandardCharsets.UTF_8.name());
+        } catch (Exception e) {
+            return value;
+        }
     }
 
     @GetMapping("/multi_send")

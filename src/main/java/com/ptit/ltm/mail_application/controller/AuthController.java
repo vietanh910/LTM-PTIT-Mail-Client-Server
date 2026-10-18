@@ -88,7 +88,13 @@ public class AuthController {
       return "redirect:/login?registered=true";
     } catch (Exception e) {
       log.error("Register failed: {}", e.getMessage());
-      return "redirect:/register?error=" + e.getMessage();
+      String encodedError = "";
+      try {
+        encodedError = java.net.URLEncoder.encode(e.getMessage() != null ? e.getMessage() : "Có lỗi xảy ra", java.nio.charset.StandardCharsets.UTF_8.name());
+      } catch (Exception ignored) {
+        encodedError = "error";
+      }
+      return "redirect:/register?error=" + encodedError;
     }
   }
 }

@@ -25,6 +25,10 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("Tên đăng nhập đã tồn tại!");
         }
 
+        if (email != null && !email.trim().isEmpty() && userRepository.existsByEmail(email.trim())) {
+            throw new IllegalArgumentException("Email đã được sử dụng!");
+        }
+
         User user = User.builder()
                 .username(username)
                 .password(password)
@@ -36,7 +40,48 @@ public class UserServiceImpl implements UserService {
                 .status("ACTIVE")
                 .build();
 
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        // Đồng bộ tạo tài khoản trên hMailServer nếu là email nội bộ (@domain1.com)
+        syncHMailServerAccount(email, password);
+
+        return savedUser;
+    }
+
+    private void syncHMailServerAccount(String email, String password) {
+        if (email == null || !email.toLowerCase().endsWith("@domain1.com")) {
+            return;
+        }
+        try {
+            String domain = email.substring(email.indexOf("@") + 1);
+            String psCmd = String.format(
+                "& { $app = New-Object -ComObject hMailServer.Application; " +
+                "$app.Authenticate('Administrator', '123456'); " +
+                "$d = $app.Domains.ItemByName('%s'); " +
+                "if ($d -ne $null) { " +
+                "  $acc = $null; " +
+                "  try { $acc = $d.Accounts.ItemByAddress('%s'); } catch {} " +
+                "  if ($acc -eq $null) { " +
+                "    $acc = $d.Accounts.Add(); " +
+                "    $acc.Address = '%s'; " +
+                "    $acc.Password = '%s'; " +
+                "    $acc.Active = $true; " +
+                "    $acc.Save(); " +
+                "  } " +
+                "} }", domain, email, email, password
+            );
+
+            ProcessBuilder pb = new ProcessBuilder("powershell", "-ExecutionPolicy", "Bypass", "-Command", psCmd);
+            pb.redirectErrorStream(true);
+            Process p = pb.start();
+            boolean finished = p.waitFor(3, java.util.concurrent.TimeUnit.SECONDS);
+            if (!finished) {
+                p.destroyForcibly();
+            }
+            log.info("(syncHMailServerAccount) Dong bo tai khoan hMailServer thanh cong: {}", email);
+        } catch (Exception e) {
+            log.warn("(syncHMailServerAccount) Khong the tao tai khoan hMailServer: {}", e.getMessage());
+        }
     }
 
     @Override

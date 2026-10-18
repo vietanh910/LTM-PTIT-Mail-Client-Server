@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="UTF-8"/>
   <title>Tạo thư mới</title>
@@ -12,31 +12,67 @@
 <div class="flex">
   <div th:replace="~{fragments/drawer :: drawer}">...</div>
   <div class="min-h-screen rounded-lg flex flex-col flex-1 bg-gray-50 p-10">
-    <form action="/send" method="post" enctype="multipart/form-data">
+
+    <!-- Thông báo lỗi từ server nếu có -->
+    <div th:if="${param.error != null or error != null}"
+         class="flex items-start gap-2 p-4 mb-6 text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg shadow-sm">
+      <svg class="w-4 h-4 mt-0.5 flex-shrink-0 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+      </svg>
+      <span th:text="${param.error != null ? param.error : error}">Địa chỉ email người nhận không tồn tại!</span>
+    </div>
+
+    <form id="mailForm" action="/send" method="post" enctype="multipart/form-data">
+      <!-- Người nhận -->
       <div class="mb-6 relative">
         <label
-                class="block w-fit top-[-12px] left-[20px] absolute bg-gray-50 text-sm font-medium text-gray-900 dark:text-white"
+                class="block w-fit top-[-12px] left-[20px] absolute bg-gray-50 px-1 text-sm font-medium text-gray-900"
                 for="toAddress"
-        >Người nhận</label
+        >Người nhận <span class="text-red-500">*</span></label
         >
         <input
-                class="border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                class="border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 transition"
                 id="toAddress"
                 name="toAddress"
-                placeholder="name@flowbite.com"
+                placeholder="user1@domain1.com"
                 required
                 th:value="${email.toAddress}"
-                type="email"
+                type="text"
+                autocomplete="off"
         />
+        <!-- Thông báo kiểm tra email người nhận -->
+        <div id="toAddressFeedback" class="mt-1.5 min-h-[20px]">
+          <p id="toAddressChecking" class="text-xs text-blue-600 font-medium hidden flex items-center gap-1.5">
+            <svg class="animate-spin h-3.5 w-3.5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+            </svg>
+            <span>Đang kiểm tra địa chỉ người nhận...</span>
+          </p>
+          <p id="toAddressError" class="text-xs text-red-600 font-medium hidden flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-red-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            <span id="toAddressErrorText">Địa chỉ email người nhận không tồn tại!</span>
+          </p>
+          <p id="toAddressSuccess" class="text-xs text-green-600 font-medium hidden flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+            <span id="toAddressSuccessText">Email người nhận hợp lệ</span>
+          </p>
+        </div>
       </div>
+
+      <!-- Tiêu đề -->
       <div class="mb-6 relative">
         <label
-                class="block w-fit top-[-12px] left-[20px] absolute bg-gray-50 text-sm font-medium text-gray-900 dark:text-white"
+                class="block w-fit top-[-12px] left-[20px] absolute bg-gray-50 px-1 text-sm font-medium text-gray-900"
                 for="subject"
-        >Tiêu đề</label
+        >Tiêu đề <span class="text-red-500">*</span></label
         >
         <input
-                class="border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                class="border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                 id="subject"
                 name="subject"
                 required
@@ -44,9 +80,11 @@
                 type="text"
         />
       </div>
+
+      <!-- Nội dung -->
       <div class="mb-6 relative">
         <label
-                class="block w-fit top-[-12px] left-[20px] absolute bg-gray-50 text-sm font-medium text-gray-900 dark:text-white"
+                class="block w-fit top-[-12px] left-[20px] absolute bg-gray-50 px-1 text-sm font-medium text-gray-900"
                 for="content"
         >Nội dung</label
         >
@@ -57,13 +95,15 @@
                 name="content"
         ></div>
       </div>
+
+      <!-- File đính kèm -->
       <div class="mb-6 relative">
         <label
-                class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                class="block mb-2 text-sm font-medium text-gray-900"
                 for="file"
         >File đính kèm (tùy chọn)</label>
         <input
-                class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
+                class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none"
                 id="file"
                 name="file"
                 type="file"
@@ -74,10 +114,12 @@
           <button type="button" onclick="clearFile()" class="ml-2 text-red-500 hover:underline text-xs">Xóa</button>
         </p>
       </div>
+
+      <!-- Nút gửi -->
       <div class="flex justify-center">
         <button
                 id="btn-submit"
-                class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center transition"
                 type="submit"
         >
           Gửi
@@ -139,9 +181,134 @@
     document.getElementById('file-name-preview').classList.add('hidden');
   }
 
-  // ── Submit: ghi nội dung Quill, kiểm tra file, hiện loading ──
-  const form = document.querySelector("form");
-  form.onsubmit = () => {
+  // ── Kiểm tra email người nhận thời gian thực ──
+  const toAddressInput = document.getElementById('toAddress');
+  const checkingEl = document.getElementById('toAddressChecking');
+  const errorEl = document.getElementById('toAddressError');
+  const errorTextEl = document.getElementById('toAddressErrorText');
+  const successEl = document.getElementById('toAddressSuccess');
+  const successTextEl = document.getElementById('toAddressSuccessText');
+
+  let checkTimer = null;
+  let isRecipientValid = null; // null: chưa xác thực, true: hợp lệ, false: không tồn tại
+
+  function setRecipientStatus(state, message) {
+    checkingEl.classList.add('hidden');
+    errorEl.classList.add('hidden');
+    successEl.classList.add('hidden');
+
+    toAddressInput.classList.remove('border-red-500', 'focus:ring-red-500', 'focus:border-red-500',
+                                    'border-green-500', 'focus:ring-green-500', 'focus:border-green-500');
+
+    if (state === 'checking') {
+      checkingEl.classList.remove('hidden');
+    } else if (state === 'error') {
+      isRecipientValid = false;
+      errorTextEl.textContent = message || 'Địa chỉ email người nhận không tồn tại!';
+      errorEl.classList.remove('hidden');
+      toAddressInput.classList.add('border-red-500', 'focus:ring-red-500', 'focus:border-red-500');
+    } else if (state === 'success') {
+      isRecipientValid = true;
+      successTextEl.textContent = message || 'Email người nhận hợp lệ';
+      successEl.classList.remove('hidden');
+      toAddressInput.classList.add('border-green-500', 'focus:ring-green-500', 'focus:border-green-500');
+    } else {
+      isRecipientValid = null;
+    }
+  }
+
+  async function checkRecipientAddress(emailVal) {
+    if (!emailVal || !emailVal.trim()) {
+      setRecipientStatus('idle');
+      return;
+    }
+    const val = emailVal.trim();
+    setRecipientStatus('checking');
+
+    try {
+      const resp = await fetch('/api/check-recipient?email=' + encodeURIComponent(val));
+      if (!resp.ok) {
+        setRecipientStatus('idle');
+        return;
+      }
+      const data = await resp.json();
+      if (data.exists) {
+        setRecipientStatus('success', data.message);
+      } else {
+        setRecipientStatus('error', data.message);
+      }
+    } catch (e) {
+      console.warn('Check recipient error:', e);
+      setRecipientStatus('idle');
+    }
+  }
+
+  toAddressInput.addEventListener('input', () => {
+    isRecipientValid = null;
+    clearTimeout(checkTimer);
+    checkTimer = setTimeout(() => {
+      checkRecipientAddress(toAddressInput.value);
+    }, 600);
+  });
+
+  toAddressInput.addEventListener('blur', () => {
+    clearTimeout(checkTimer);
+    if (toAddressInput.value && toAddressInput.value.trim()) {
+      checkRecipientAddress(toAddressInput.value);
+    }
+  });
+
+  // Nếu trang vừa mở đã có sẵn email người nhận
+  if (toAddressInput.value && toAddressInput.value.trim()) {
+    checkRecipientAddress(toAddressInput.value);
+  }
+
+  // ── Submit: kiểm tra người nhận, ghi nội dung Quill, kiểm tra file, hiện loading ──
+  const form = document.getElementById("mailForm");
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+
+    const toVal = toAddressInput.value ? toAddressInput.value.trim() : '';
+    if (!toVal) {
+      alert('Vui lòng nhập địa chỉ email người nhận!');
+      toAddressInput.focus();
+      return false;
+    }
+
+    const btn = document.getElementById('btn-submit');
+
+    // Nếu chưa xác thực hoặc đang chờ, gọi kiểm tra ngay lập tức
+    if (isRecipientValid === null) {
+      btn.disabled = true;
+      btn.textContent = 'Đang kiểm tra người nhận...';
+      try {
+        const resp = await fetch('/api/check-recipient?email=' + encodeURIComponent(toVal));
+        if (resp.ok) {
+          const data = await resp.json();
+          if (!data.exists) {
+            setRecipientStatus('error', data.message);
+            alert(data.message || 'Địa chỉ email người nhận không tồn tại! Vui lòng kiểm tra lại.');
+            toAddressInput.focus();
+            btn.disabled = false;
+            btn.textContent = 'Gửi';
+            return false;
+          } else {
+            setRecipientStatus('success', data.message);
+          }
+        }
+      } catch (err) {
+        console.warn('Check recipient failed on submit:', err);
+      }
+      btn.disabled = false;
+      btn.textContent = 'Gửi';
+    }
+
+    if (isRecipientValid === false) {
+      alert(errorTextEl.textContent || 'Địa chỉ email người nhận không tồn tại! Vui lòng kiểm tra lại.');
+      toAddressInput.focus();
+      return false;
+    }
+
     const contentInput = document.querySelector("input[name='content']");
     contentInput.value = JSON.stringify(quill.getContents());
 
@@ -154,11 +321,10 @@
       }
     }
 
-    const btn = document.getElementById('btn-submit');
     btn.disabled = true;
     btn.textContent = 'Đang gửi...';
     btn.classList.add('opacity-75', 'cursor-not-allowed');
-    return true;
+    form.submit();
   };
 </script>
 </body>
