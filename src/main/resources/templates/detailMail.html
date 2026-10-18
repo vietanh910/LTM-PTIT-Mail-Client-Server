@@ -198,34 +198,98 @@
           const fileNames = email.attachmentName.split(';').map(s => s.trim()).filter(Boolean);
           fileNames.forEach(rawFileName => {
             const displayName = rawFileName.replace(/^\d+_/, '');
-            const isImage = /\.(png|jpe?g|gif|webp|bmp)$/i.test(displayName);
+            const isImage = /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(displayName);
+            const isVideo = /\.(mp4|webm|ogg|mov|mkv|avi|m4v)$/i.test(displayName);
+            const isAudio = /\.(mp3|wav|ogg|aac|m4a)$/i.test(displayName);
             const isPdf = /\.pdf$/i.test(displayName);
 
             const card = document.createElement('div');
             card.className = "p-4 bg-white border border-gray-200 rounded-lg shadow-sm";
 
             let previewHtml = '';
+            let iconSvg = '';
+            let typeBadge = 'Tệp đính kèm';
+            let badgeBg = 'bg-gray-100 text-gray-700';
+
             if (isImage) {
+              typeBadge = 'Hình ảnh';
+              badgeBg = 'bg-blue-50 text-blue-700';
+              iconSvg = `<div class="p-2.5 bg-blue-50 text-blue-600 rounded-lg flex-shrink-0">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+              </div>`;
               previewHtml = `
-                <div class="mt-3 overflow-hidden rounded border border-gray-200 bg-gray-50 p-2 max-w-lg">
-                  <a href="/attachment/view?filename=${encodeURIComponent(rawFileName)}" target="_blank" title="Bấm vào để mở ảnh kích thước đầy đủ">
-                    <img src="/attachment/view?filename=${encodeURIComponent(rawFileName)}" alt="${displayName}" class="max-h-80 w-auto rounded object-contain cursor-zoom-in hover:opacity-95 transition" />
+                <div class="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 p-2 max-w-2xl">
+                  <div class="flex items-center justify-between mb-1.5 text-xs text-gray-500">
+                    <span class="font-medium flex items-center gap-1">🖼 Xem ảnh trực tiếp:</span>
+                    <a href="/attachment/view?filename=${encodeURIComponent(rawFileName)}" target="_blank" class="text-blue-600 hover:underline">Mở toàn màn hình ↗</a>
+                  </div>
+                  <a href="/attachment/view?filename=${encodeURIComponent(rawFileName)}" target="_blank" title="Bấm vào để mở ảnh kích thước đầy đủ trong tab mới">
+                    <img src="/attachment/view?filename=${encodeURIComponent(rawFileName)}" alt="${displayName}" class="max-h-96 w-auto rounded object-contain cursor-zoom-in hover:opacity-95 transition shadow-sm" />
                   </a>
                 </div>
               `;
+            } else if (isVideo) {
+              typeBadge = 'Video';
+              badgeBg = 'bg-purple-50 text-purple-700';
+              iconSvg = `<div class="p-2.5 bg-purple-50 text-purple-600 rounded-lg flex-shrink-0">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                </svg>
+              </div>`;
+              previewHtml = `
+                <div class="mt-3 overflow-hidden rounded-lg border border-gray-300 bg-black max-w-2xl p-2 shadow-md">
+                  <div class="flex items-center justify-between mb-2 text-xs text-gray-300 px-1">
+                    <span class="flex items-center gap-1 font-medium">🎬 Phát video trực tiếp:</span>
+                    <a href="/attachment/view?filename=${encodeURIComponent(rawFileName)}" target="_blank" class="text-blue-400 hover:underline text-xs">Mở tab mới ↗</a>
+                  </div>
+                  <video controls class="w-full max-h-96 rounded bg-black" preload="metadata">
+                    <source src="/attachment/view?filename=${encodeURIComponent(rawFileName)}">
+                    Trình duyệt của bạn không hỗ trợ phát trực tiếp định dạng video này. Bạn có thể bấm "Tải xuống" để xem.
+                  </video>
+                </div>
+              `;
+            } else if (isAudio) {
+              typeBadge = 'Âm thanh';
+              badgeBg = 'bg-yellow-50 text-yellow-700';
+              iconSvg = `<div class="p-2.5 bg-yellow-50 text-yellow-600 rounded-lg flex-shrink-0">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+                </svg>
+              </div>`;
+              previewHtml = `
+                <div class="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 max-w-xl p-3">
+                  <p class="text-xs text-gray-600 mb-1.5 font-medium flex items-center gap-1">🎵 Nghe âm thanh trực tiếp:</p>
+                  <audio controls class="w-full">
+                    <source src="/attachment/view?filename=${encodeURIComponent(rawFileName)}">
+                    Trình duyệt của bạn không hỗ trợ phát âm thanh trực tiếp.
+                  </audio>
+                </div>
+              `;
+            } else if (isPdf) {
+              typeBadge = 'Tài liệu PDF';
+              badgeBg = 'bg-red-50 text-red-700';
+              iconSvg = `<div class="p-2.5 bg-red-50 text-red-600 rounded-lg flex-shrink-0">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+              </div>`;
+            } else {
+              iconSvg = `<div class="p-2.5 bg-gray-100 text-gray-600 rounded-lg flex-shrink-0">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                </svg>
+              </div>`;
             }
 
             card.innerHTML = `
               <div class="flex items-center justify-between gap-3 flex-wrap">
                 <div class="flex items-center gap-3 min-w-0">
-                  <div class="p-2.5 bg-blue-50 text-blue-600 rounded-lg flex-shrink-0">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
-                    </svg>
-                  </div>
+                  ${iconSvg}
                   <div class="min-w-0">
                     <p class="text-sm font-medium text-gray-900 truncate" title="${displayName}">${displayName}</p>
-                    <span class="text-xs text-gray-500">${isImage ? 'Hình ảnh' : (isPdf ? 'Tài liệu PDF' : 'Tệp đính kèm')}</span>
+                    <span class="inline-block px-2 py-0.5 mt-0.5 text-[11px] font-medium rounded ${badgeBg}">${typeBadge}</span>
                   </div>
                 </div>
                 <div class="flex items-center gap-2 flex-shrink-0">
@@ -235,7 +299,7 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                     </svg>
-                    Xem file
+                    Xem trực tiếp
                   </a>
                   <a href="/attachment/download?filename=${encodeURIComponent(rawFileName)}"
                      class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition shadow-sm">

@@ -7,6 +7,10 @@ server:
       enabled: true
 
 spring:
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 30MB
   thymeleaf:
     encoding: UTF-8
   datasource:

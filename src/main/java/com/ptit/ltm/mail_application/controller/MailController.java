@@ -482,11 +482,12 @@ public class MailController {
         }
     }
 
-    // =================== XEM FILE ĐÍNH KÈM TRỰC TIẾP (INLINE / PREVIEW) ===================
+    // =================== XEM FILE ĐÍNH KÈM TRỰC TIẾP (INLINE / PREVIEW / STREAMING) ===================
 
     @GetMapping("/attachment/view")
-    public ResponseEntity<org.springframework.core.io.Resource> viewAttachment(
-            @RequestParam("filename") String filename) {
+    public ResponseEntity<?> viewAttachment(
+            @RequestParam("filename") String filename,
+            @RequestHeader HttpHeaders headers) {
         try {
             String safeName = Paths.get(filename).getFileName().toString();
             Path filePath = Paths.get(System.getProperty("user.dir"), "uploads", safeName);
@@ -497,25 +498,82 @@ public class MailController {
                 return ResponseEntity.notFound().build();
             }
 
-            String contentType = null;
-            try {
-                contentType = Files.probeContentType(filePath);
-            } catch (Exception ignored) {}
-            if (contentType == null) {
-                contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
-            }
-
+            String contentType = resolveContentType(safeName);
             String displayName = safeName.replaceFirst("^\\d+_", "");
+            long contentLength = resource.contentLength();
+
+            // Hỗ trợ HTTP Range requests cho việc phát và tua video mượt mà (Video streaming)
+            List<org.springframework.http.HttpRange> ranges = headers.getRange();
+            if (ranges != null && !ranges.isEmpty()) {
+                org.springframework.http.HttpRange range = ranges.get(0);
+                long start = range.getRangeStart(contentLength);
+                long end = range.getRangeEnd(contentLength);
+                long maxChunk = 1024 * 1024 * 2L; // 2 MB mỗi chunk
+                long lengthToRead = Math.min(end - start + 1, maxChunk);
+                long actualEnd = start + lengthToRead - 1;
+
+                byte[] buffer = new byte[(int) lengthToRead];
+                try (java.io.RandomAccessFile raf = new java.io.RandomAccessFile(filePath.toFile(), "r")) {
+                    raf.seek(start);
+                    raf.readFully(buffer);
+                }
+
+                return ResponseEntity.status(org.springframework.http.HttpStatus.PARTIAL_CONTENT)
+                        .contentType(MediaType.parseMediaType(contentType))
+                        .header(HttpHeaders.ACCEPT_RANGES, "bytes")
+                        .header(HttpHeaders.CONTENT_RANGE, "bytes " + start + "-" + actualEnd + "/" + contentLength)
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + displayName + "\"")
+                        .contentLength(lengthToRead)
+                        .body(buffer);
+            }
 
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.ACCEPT_RANGES, "bytes")
                     .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + displayName + "\"")
+                    .contentLength(contentLength)
                     .body(resource);
 
         } catch (Exception e) {
             log.error("(viewAttachment) error: {}", e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    private String resolveContentType(String filename) {
+        String lower = filename.toLowerCase();
+        // Video
+        if (lower.endsWith(".mp4") || lower.endsWith(".m4v")) return "video/mp4";
+        if (lower.endsWith(".webm")) return "video/webm";
+        if (lower.endsWith(".ogg") || lower.endsWith(".ogv")) return "video/ogg";
+        if (lower.endsWith(".mov")) return "video/quicktime";
+        if (lower.endsWith(".mkv")) return "video/x-matroska";
+        if (lower.endsWith(".avi")) return "video/x-msvideo";
+        // Audio
+        if (lower.endsWith(".mp3")) return "audio/mpeg";
+        if (lower.endsWith(".wav")) return "audio/wav";
+        if (lower.endsWith(".m4a")) return "audio/mp4";
+        if (lower.endsWith(".aac")) return "audio/aac";
+        // Hình ảnh
+        if (lower.endsWith(".png")) return "image/png";
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+        if (lower.endsWith(".gif")) return "image/gif";
+        if (lower.endsWith(".webp")) return "image/webp";
+        if (lower.endsWith(".svg")) return "image/svg+xml";
+        if (lower.endsWith(".bmp")) return "image/bmp";
+        if (lower.endsWith(".ico")) return "image/x-icon";
+        // Tài liệu
+        if (lower.endsWith(".pdf")) return "application/pdf";
+        if (lower.endsWith(".txt")) return "text/plain; charset=UTF-8";
+        if (lower.endsWith(".html") || lower.endsWith(".htm")) return "text/html; charset=UTF-8";
+        if (lower.endsWith(".json")) return "application/json";
+
+        try {
+            String probed = Files.probeContentType(Paths.get(filename));
+            if (probed != null) return probed;
+        } catch (Exception ignored) {}
+
+        return MediaType.APPLICATION_OCTET_STREAM_VALUE;
     }
 }
 
