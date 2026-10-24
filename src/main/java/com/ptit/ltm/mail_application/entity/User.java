@@ -32,6 +32,10 @@ public class User {
     @Column(length = 30)
     private String phoneNumber;
 
+    @Lob
+    @Column(name = "avatar", columnDefinition = "MEDIUMBLOB")
+    private byte[] avatar;
+
     @Column(length = 255)
     private String address;
 

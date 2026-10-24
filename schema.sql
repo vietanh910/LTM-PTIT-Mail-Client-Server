@@ -25,6 +25,7 @@ CREATE TABLE `users` (
     `full_name` VARCHAR(150) COMMENT 'Họ và tên',
     `email` VARCHAR(150) COMMENT 'Địa chỉ email',
     `phone_number` VARCHAR(30) COMMENT 'Số điện thoại',
+    `avatar` MEDIUMBLOB COMMENT 'Ảnh đại diện PNG',
     `address` VARCHAR(255) COMMENT 'Địa chỉ',
     `role` VARCHAR(50) DEFAULT 'ROLE_USER' COMMENT 'Quyền hạn: ROLE_USER, ROLE_ADMIN',
     `status` VARCHAR(30) DEFAULT 'ACTIVE' COMMENT 'Trạng thái: ACTIVE, INACTIVE, BLOCKED',
