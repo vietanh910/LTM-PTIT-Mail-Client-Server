@@ -56,6 +56,12 @@ public class AuthController {
         }
       }
       httpSession.setAttribute("username", fullEmail);
+      Optional<User> profileUser = dbAuthenticated
+          ? userService.findByUsername(loginRequest.getUsername())
+              .or(() -> userService.findByEmail(loginRequest.getUsername()))
+          : userService.findByEmail(fullEmail);
+      httpSession.removeAttribute("profileUserId");
+      profileUser.ifPresent(user -> httpSession.setAttribute("profileUserId", user.getId()));
       httpSession.setAttribute("password", loginRequest.getPassword());
       return "redirect:/";
     }

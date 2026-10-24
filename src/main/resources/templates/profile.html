@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Thông tin cá nhân - Mail Application</title>
+    <script src="/js/lib/tailwind/tailwind.js"></script>
+    <script src="/js/lib/tailwind/tailwind.config.js"></script>
+</head>
+<body class="bg-gray-100 font-sans antialiased text-gray-800">
+<div th:replace="~{fragments/header :: header}"></div>
+<div class="flex">
+    <aside class="hidden md:block"><div th:replace="~{fragments/drawer :: drawer}"></div></aside>
+    <main class="flex-1 min-w-0 min-h-screen bg-gray-50 p-4 md:p-8">
+        <div class="max-w-4xl mx-auto">
+            <a href="/" class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-blue-700 mb-5">
+                <span aria-hidden="true">←</span> Quay lại hộp thư
+            </a>
+            <h1 class="text-2xl font-bold text-gray-900">Thông tin cá nhân</h1>
+            <p class="mt-2 mb-6 text-sm text-gray-500">Cập nhật ảnh đại diện, thông tin liên hệ và mật khẩu của bạn.</p>
+
+            <div th:if="${message}" th:text="${message}" role="status"
+                 class="mb-5 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800"></div>
+            <div th:if="${error}" th:text="${error}" role="alert"
+                 class="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"></div>
+
+            <form th:action="@{/profile}" th:object="${profileForm}" method="post" enctype="multipart/form-data"
+                  class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden" id="profile-form">
+                <input type="hidden" name="csrfToken" th:value="${session.profileCsrfToken}"/>
+                <div th:if="${#fields.hasAnyErrors()}" class="m-6 rounded-lg bg-red-50 p-4 text-sm text-red-700" role="alert">
+                    <p th:each="err : ${#fields.allErrors()}" th:text="${err}"></p>
+                </div>
+
+                <section class="p-6 md:p-8 border-b border-gray-100">
+                    <h2 class="font-semibold text-lg mb-5">Ảnh đại diện</h2>
+                    <div class="flex flex-wrap items-center gap-6">
+                        <img id="avatar-preview" src="/profile/avatar" alt="Ảnh đại diện của bạn"
+                             class="w-24 h-24 rounded-full object-cover border-4 border-gray-100 bg-gray-50"/>
+                        <div>
+                            <label for="avatar" class="inline-flex px-4 py-2 rounded-lg border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 text-sm font-medium cursor-pointer">Chọn ảnh mới</label>
+                            <input id="avatar" name="avatar" type="file" accept="image/jpeg,image/png" class="sr-only" aria-describedby="avatar-help avatar-error"/>
+                            <p id="avatar-help" class="mt-2 text-xs text-gray-500">JPG hoặc PNG, tối đa 2 MB và 4 triệu điểm ảnh.</p>
+                            <p id="avatar-error" class="mt-2 text-sm text-red-600" role="alert"></p>
+                            <label class="mt-3 flex items-center gap-2 text-sm text-gray-500 cursor-pointer">
+                                <input id="remove-avatar" type="checkbox" name="removeAvatar" value="true" class="rounded border-gray-300"/>
+                                Dùng ảnh mặc định
+                            </label>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="p-6 md:p-8 border-b border-gray-100">
+                    <h2 class="font-semibold text-lg mb-5">Thông tin tài khoản</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div class="md:col-span-2">
+                            <label for="email" class="block text-sm font-medium mb-2">Địa chỉ email</label>
+                            <input id="email" type="email" th:value="${currentUser}" readonly
+                                   class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-gray-500"/>
+                        </div>
+                        <div>
+                            <label for="fullName" class="block text-sm font-medium mb-2">Họ và tên <span class="text-red-500">*</span></label>
+                            <input id="fullName" th:field="*{fullName}" type="text" required maxlength="150" autocomplete="name"
+                                   placeholder="Nhập họ và tên"
+                                   class="w-full rounded-lg border border-gray-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                        </div>
+                        <div>
+                            <label for="phoneNumber" class="block text-sm font-medium mb-2">Số điện thoại</label>
+                            <input id="phoneNumber" th:field="*{phoneNumber}" type="tel" maxlength="30" autocomplete="tel"
+                                   placeholder="Nhập số điện thoại"
+                                   class="w-full rounded-lg border border-gray-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="p-6 md:p-8">
+                    <h2 class="font-semibold text-lg">Đổi mật khẩu</h2>
+                    <p class="mt-1 mb-5 text-sm text-gray-500">Để trống các ô bên dưới nếu bạn muốn giữ mật khẩu hiện tại.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div class="md:col-span-2">
+                            <label for="currentPassword" class="block text-sm font-medium mb-2">Mật khẩu hiện tại</label>
+                            <input id="currentPassword" name="currentPassword" type="password" maxlength="255" autocomplete="current-password"
+                                   class="w-full rounded-lg border border-gray-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                        </div>
+                        <div>
+                            <label for="newPassword" class="block text-sm font-medium mb-2">Mật khẩu mới</label>
+                            <input id="newPassword" name="newPassword" type="password" minlength="6" maxlength="255" autocomplete="new-password"
+                                   placeholder="Ít nhất 6 ký tự"
+                                   class="w-full rounded-lg border border-gray-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                        </div>
+                        <div>
+                            <label for="confirmPassword" class="block text-sm font-medium mb-2">Xác nhận mật khẩu mới</label>
+                            <input id="confirmPassword" name="confirmPassword" type="password" maxlength="255" autocomplete="new-password"
+                                   placeholder="Nhập lại mật khẩu mới"
+                                   class="w-full rounded-lg border border-gray-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                        </div>
+                    </div>
+                </section>
+                <div class="flex justify-end gap-3 px-6 py-4 md:px-8 border-t border-gray-100 bg-gray-50">
+                    <a href="/" class="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium hover:bg-gray-100">Hủy</a>
+                    <button id="save-profile" type="submit" class="rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 focus:ring-4 focus:ring-blue-200 disabled:opacity-60">Lưu thay đổi</button>
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+<script src="/js/profile.js"></script>
+</body>
+</html>

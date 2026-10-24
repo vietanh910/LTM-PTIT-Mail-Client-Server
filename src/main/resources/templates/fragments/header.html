@@ -57,9 +57,10 @@
             data-dropdown-placement="bottom"
           >
             <img
-              class="w-8 h-8 rounded-full"
+              class="w-8 h-8 rounded-full object-cover"
               src="/image/user.jpeg"
-              alt="user photo"
+              th:src="@{/profile/avatar}"
+              alt="Ảnh đại diện"
             />
           </button>
           <!-- Dropdown menu -->
@@ -78,6 +79,10 @@
               >
             </div>
             <ul class="py-2" aria-labelledby="user-menu-button">
+              <li>
+                <a href="/profile"
+                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600">Thông tin cá nhân</a>
+              </li>
               <li>
                 <a
                   href="/logout"
