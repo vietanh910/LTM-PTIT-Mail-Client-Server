@@ -126,28 +126,62 @@ public class MailServiceImpl {
         }
     }
 
+    private String determineContentType(String filename) {
+        if (filename == null) return "application/octet-stream";
+        String lower = filename.toLowerCase();
+        if (lower.endsWith(".mp4") || lower.endsWith(".m4v")) return "video/mp4";
+        if (lower.endsWith(".webm")) return "video/webm";
+        if (lower.endsWith(".ogg") || lower.endsWith(".ogv")) return "video/ogg";
+        if (lower.endsWith(".mov")) return "video/quicktime";
+        if (lower.endsWith(".mkv")) return "video/x-matroska";
+        if (lower.endsWith(".avi")) return "video/x-msvideo";
+        if (lower.endsWith(".png")) return "image/png";
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+        if (lower.endsWith(".gif")) return "image/gif";
+        if (lower.endsWith(".webp")) return "image/webp";
+        if (lower.endsWith(".pdf")) return "application/pdf";
+        if (lower.endsWith(".mp3")) return "audio/mpeg";
+        return "application/octet-stream";
+    }
+
     public Message getSendMailMessage(Email email, MultipartFile file, Session session) {
         log.info("(sendEmail) email: {}", email);
 
-        Message message = new MimeMessage(session);
+        MimeMessage message = new MimeMessage(session);
         MimeBodyPart bodyPart = new MimeBodyPart();
         MimeMultipart multipart = new MimeMultipart();
         try {
             message.setFrom(new InternetAddress(email.getFromAddress()));
             message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(email.getToAddress()));
-            message.setSubject(email.getSubject());
+            message.setSubject(email.getSubject(), "UTF-8");
 
             if (file != null && !file.isEmpty()) {
-                bodyPart.setText(email.getContent());
+                bodyPart.setText(email.getContent() != null ? email.getContent() : "");
                 multipart.addBodyPart(bodyPart);
+
                 MimeBodyPart attachmentPart = new MimeBodyPart();
-                DataSource source = new ByteArrayDataSource(file.getBytes(), file.getContentType());
+                String contentType = file.getContentType();
+                if (contentType == null || contentType.isEmpty() || "application/octet-stream".equalsIgnoreCase(contentType)) {
+                    contentType = determineContentType(file.getOriginalFilename());
+                }
+                DataSource source = new ByteArrayDataSource(file.getBytes(), contentType);
                 attachmentPart.setDataHandler(new DataHandler(source));
-                attachmentPart.setFileName(file.getOriginalFilename());
+
+                String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "attachment";
+                String encodedFilename;
+                try {
+                    encodedFilename = MimeUtility.encodeText(originalFilename, "UTF-8", null);
+                } catch (Exception e) {
+                    encodedFilename = originalFilename;
+                }
+                attachmentPart.setFileName(encodedFilename);
+                attachmentPart.setDisposition(Part.ATTACHMENT);
+                attachmentPart.setHeader("Content-Type", contentType + "; name=\"" + encodedFilename + "\"");
+                attachmentPart.setHeader("Content-Disposition", "attachment; filename=\"" + encodedFilename + "\"");
                 multipart.addBodyPart(attachmentPart);
                 message.setContent(multipart);
             } else {
-                message.setText(email.getContent());
+                message.setText(email.getContent() != null ? email.getContent() : "", "UTF-8");
             }
 
         } catch (MessagingException e) {
@@ -313,12 +347,16 @@ public class MailServiceImpl {
         for (int i = 0; i < multipart.getCount(); i++) {
             BodyPart bodyPart = multipart.getBodyPart(i);
 
-            try {
-                if (bodyPart.getContent() instanceof Multipart) {
-                    extractAttachmentsFromMultipart((Multipart) bodyPart.getContent(), attachments);
-                    continue;
-                }
-            } catch (Exception ignored) {}
+            // Kiểm tra multipart đệ quy an toàn mà không tải payload của tệp lớn vào bộ nhớ
+            if (bodyPart.isMimeType("multipart/*")) {
+                try {
+                    Object nestedContent = bodyPart.getContent();
+                    if (nestedContent instanceof Multipart) {
+                        extractAttachmentsFromMultipart((Multipart) nestedContent, attachments);
+                        continue;
+                    }
+                } catch (Exception ignored) {}
+            }
 
             String disposition = bodyPart.getDisposition();
             String rawFileName = bodyPart.getFileName();
@@ -326,12 +364,24 @@ public class MailServiceImpl {
             boolean isAttachment = false;
             if (rawFileName != null && !rawFileName.trim().isEmpty()) {
                 isAttachment = true;
-            } else if (Part.ATTACHMENT.equalsIgnoreCase(disposition)) {
+            } else if (Part.ATTACHMENT.equalsIgnoreCase(disposition) || Part.INLINE.equalsIgnoreCase(disposition)) {
+                isAttachment = true;
+            } else if (!bodyPart.isMimeType("text/plain") && !bodyPart.isMimeType("text/html")) {
                 isAttachment = true;
             }
 
             if (isAttachment) {
-                String fileName = rawFileName != null ? MimeUtility.decodeText(rawFileName) : "attachment_" + System.currentTimeMillis();
+                if (rawFileName == null || rawFileName.trim().isEmpty()) {
+                    String mime = bodyPart.getContentType() != null ? bodyPart.getContentType().toLowerCase() : "";
+                    if (mime.contains("image/png")) rawFileName = "image.png";
+                    else if (mime.contains("image/jpeg") || mime.contains("image/jpg")) rawFileName = "image.jpg";
+                    else if (mime.contains("image/gif")) rawFileName = "image.gif";
+                    else if (mime.contains("video/mp4")) rawFileName = "video.mp4";
+                    else if (mime.contains("audio/mpeg") || mime.contains("audio/mp3")) rawFileName = "audio.mp3";
+                    else if (mime.contains("application/pdf")) rawFileName = "document.pdf";
+                    else rawFileName = "attachment_" + System.currentTimeMillis();
+                }
+                String fileName = MimeUtility.decodeText(rawFileName);
                 String safeOriginal = fileName.replaceAll("[^a-zA-Z0-9._\\-]", "_");
 
                 // Kiểm tra xem file này đã tồn tại trong thư mục uploads chưa (do người gửi trên cùng máy đã lưu)

@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8"/>
-    <title>Hộp thư đến - Trang chủ</title>
+    <title th:text="${unreadInboxCount != null and unreadInboxCount > 0} ? 'Hộp thư đến (' + ${unreadInboxCount} + ') - Trang chủ' : 'Hộp thư đến - Trang chủ'">Hộp thư đến - Trang chủ</title>
+    <link rel="icon" type="image/png" href="/image/logo.png" />
     <script src="/js/lib/tailwind/tailwind.js"></script>
     <script src="/js/lib/tailwind/tailwind.config.js"></script>
     <link href="/js/lib/quill/quill.bubble.css" rel="stylesheet">
@@ -12,7 +13,25 @@
 <div class="flex">
     <div th:replace="~{fragments/drawer :: drawer}">...</div>
     <div class="min-h-screen rounded-lg flex flex-1 bg-gray-50 flex-col p-4">
-        
+
+        <!-- Tiêu đề Hộp thư đến -->
+        <div class="flex items-center justify-between mb-3 px-1">
+            <h1 class="text-xl font-bold text-gray-800 flex items-center">
+                <span>Hộp thư đến</span>
+                <span id="homeUnreadInboxCount"
+                      th:text="${unreadInboxCount != null and unreadInboxCount > 0} ? '(' + ${unreadInboxCount} + ')' : ''"
+                      th:class="${unreadInboxCount != null and unreadInboxCount > 0} ? 'ml-2 text-blue-600 font-bold' : 'hidden ml-2 text-blue-600 font-bold'"></span>
+            </h1>
+            <!-- Nút Làm mới hộp thư -->
+            <button type="button" onclick="window.location.reload()" title="Làm mới hộp thư"
+                    class="inline-flex items-center text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:text-blue-600 px-3 py-1.5 rounded-lg shadow-sm transition">
+                <svg class="w-3.5 h-3.5 mr-1.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                Làm mới
+            </button>
+        </div>
+
         <!-- Toolbar hành động hàng loạt -->
         <div class="flex items-center justify-between bg-white px-5 py-3 rounded-t-lg border-b border-gray-200 shadow-sm">
             <div class="flex items-center space-x-3">
@@ -86,6 +105,14 @@
                                th:classappend="${!email.read} ? 'text-gray-900 font-bold' : 'text-gray-700'"
                                class="truncate max-w-[280px] block"
                                th:text="${email.subject}">
+                            </a>
+                            <a th:if="${email.hasAttachment and email.attachmentName != null}"
+                               th:href="'/attachment/view?filename=' + ${email.attachmentName}"
+                               target="_blank"
+                               onclick="event.stopPropagation();"
+                               class="inline-flex items-center px-1.5 py-0.5 text-[11px] font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded flex-shrink-0 transition ml-1"
+                               title="Bấm để xem trực tiếp tệp đính kèm">
+                                📎 Xem tệp
                             </a>
                         </div>
                     </td>

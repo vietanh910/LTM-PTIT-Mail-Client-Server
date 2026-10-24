@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <title>Chi tiết thư</title>
+    <link rel="icon" type="image/png" href="/image/logo.png" />
     <script src="/js/lib/tailwind/tailwind.js"></script>
     <script src="/js/lib/tailwind/tailwind.config.js"></script>
     <link href="/js/lib/quill/quill.snow.css" rel="stylesheet" />
@@ -109,9 +110,30 @@
 
     <script src="/js/lib/quill/quill.js"></script>
     <script th:inline="javascript">
-      const emailRaw = localStorage.getItem("email");
-      const email = emailRaw ? JSON.parse(emailRaw) : null;
+      const serverEmail = /*[[${email}]]*/ null;
+      let emailRaw = localStorage.getItem("email");
+      let localEmail = null;
+      try {
+        localEmail = emailRaw ? JSON.parse(emailRaw) : null;
+      } catch (e) {}
+
+      // Ưu tiên dữ liệu từ serverEmail, kết hợp thông tin attachment từ cả hai nguồn
+      let email = serverEmail || localEmail;
+      if (serverEmail && localEmail) {
+        if (!email.hasAttachment && localEmail.hasAttachment) {
+          email.hasAttachment = true;
+          email.attachmentName = localEmail.attachmentName;
+        } else if (!email.hasAttachment && serverEmail.hasAttachment) {
+          email.hasAttachment = true;
+          email.attachmentName = serverEmail.attachmentName;
+        }
+      }
+      if (email && email.attachmentName && !email.hasAttachment) {
+        email.hasAttachment = true;
+      }
+
       const authorData = localStorage.getItem("author");
+      const currentUser = /*[[${currentUser}]]*/ "";
       let subject = document.getElementById("subject");
       let author = document.getElementById("author");
       let address = document.getElementById("address");
@@ -120,7 +142,12 @@
       if (email) {
         subject.innerText = email.subject || '(Không có tiêu đề)';
 
-        if (authorData === "me") {
+        let isMe = authorData === "me";
+        if (email.fromAddress && currentUser && email.fromAddress.toLowerCase() === currentUser.toLowerCase()) {
+          isMe = true;
+        }
+
+        if (isMe) {
           author.innerText = "Người nhận";
           address.innerText = email.toAddress || '';
           document.getElementById("btn-reply").style.display = "none";
@@ -275,6 +302,15 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                 </svg>
               </div>`;
+              previewHtml = `
+                <div class="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 max-w-4xl p-2 shadow-sm">
+                  <div class="flex items-center justify-between mb-1.5 text-xs text-gray-500 px-1">
+                    <span class="font-medium flex items-center gap-1">📄 Xem trực tiếp PDF:</span>
+                    <a href="/attachment/view?filename=${encodeURIComponent(rawFileName)}" target="_blank" class="text-blue-600 hover:underline">Mở toàn màn hình ↗</a>
+                  </div>
+                  <iframe src="/attachment/view?filename=${encodeURIComponent(rawFileName)}" class="w-full h-96 rounded border border-gray-300 bg-white"></iframe>
+                </div>
+              `;
             } else {
               iconSvg = `<div class="p-2.5 bg-gray-100 text-gray-600 rounded-lg flex-shrink-0">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

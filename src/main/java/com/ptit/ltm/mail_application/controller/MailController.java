@@ -25,6 +25,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
@@ -35,6 +36,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 @Slf4j
@@ -55,6 +57,16 @@ public class MailController {
         return attr != null ? attr.toString() : "123456";
     }
 
+    @ModelAttribute("unreadInboxCount")
+    public long getUnreadInboxCount(HttpSession session) {
+        String username = getSessionUsername(session);
+        String password = getSessionPassword(session);
+        if (username == null || username.trim().isEmpty()) {
+            return 0;
+        }
+        return mailFacadeService.countUnreadInbox(username, password);
+    }
+
     private String readTemplateJson(String fileName) {
         try {
             ClassPathResource resource = new ClassPathResource("data/" + fileName);
@@ -69,7 +81,7 @@ public class MailController {
         return "";
     }
 
-    @GetMapping
+    @GetMapping({"/", "/home"})
     public String home(Model model, HttpSession httpSession) {
         log.info("(home) bat dau vao trang chu - lay ra thu nhan duoc");
         String username = getSessionUsername(httpSession);
@@ -146,6 +158,17 @@ public class MailController {
         String username = getSessionUsername(httpSession);
         String password = getSessionPassword(httpSession);
 
+        // 0. Kiểm tra dung lượng tệp đính kèm tối đa 15MB
+        if (file != null && !file.isEmpty()) {
+            long maxAllowed = 15L * 1024 * 1024; // 15 MB
+            if (file.getSize() > maxAllowed) {
+                log.warn("(sendMail) Tep dinh kem vuot qua 15MB: {} bytes", file.getSize());
+                return "redirect:/send?error=" + urlEncode("Dung lượng tệp đính kèm vượt quá giới hạn tối đa 15 MB! Vui lòng chọn tệp nhỏ hơn để tiết kiệm tài nguyên.")
+                        + "&toAddress=" + urlEncode(sendMailRequest.getToAddress())
+                        + "&subject=" + urlEncode(sendMailRequest.getSubject());
+            }
+        }
+
         // 1. Kiểm tra tính hợp lệ của người nhận trước khi gửi
         com.ptit.ltm.mail_application.service.impl.RecipientValidationService.ValidationResult validation =
                 recipientValidationService.validateRecipient(sendMailRequest.getToAddress());
@@ -191,6 +214,23 @@ public class MailController {
         return ResponseEntity.ok(result);
     }
 
+    /**
+     * API kiểm tra số lượng thư chưa đọc trong Hộp thư đến theo thời gian thực (realtime unread count)
+     * Dùng cho polling tự động từ giao diện mà không cần reload trang.
+     */
+    @GetMapping("/api/unread-count")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getUnreadCount(HttpSession session) {
+        String username = getSessionUsername(session);
+        String password = getSessionPassword(session);
+        if (username == null || username.trim().isEmpty()) {
+            return ResponseEntity.ok(Map.of("unreadCount", 0L, "totalCount", 0L));
+        }
+        long count = mailFacadeService.countUnreadInbox(username, password);
+        long total = mailFacadeService.countTotalInbox(username);
+        return ResponseEntity.ok(Map.of("unreadCount", count, "totalCount", total));
+    }
+
     private String urlEncode(String value) {
         if (value == null) return "";
         try {
@@ -208,6 +248,13 @@ public class MailController {
 
     @PostMapping("/multi_send")
     public String sendMultiMail(@RequestParam("file") MultipartFile excelFile, HttpSession httpSession) throws Exception {
+        if (excelFile != null && !excelFile.isEmpty()) {
+            long maxAllowed = 15L * 1024 * 1024;
+            if (excelFile.getSize() > maxAllowed) {
+                log.warn("(sendMultiMail) Excel file vượt quá 15MB: {}", excelFile.getSize());
+                return "redirect:/multi_send?error=" + urlEncode("Tệp danh sách Excel vượt quá giới hạn 15 MB!");
+            }
+        }
         String username = getSessionUsername(httpSession);
         String password = getSessionPassword(httpSession);
 
@@ -279,14 +326,37 @@ public class MailController {
     @GetMapping("/detail/{id}")
     public String detailMail(@PathVariable("id") String id, Model model, HttpSession httpSession) {
         log.info("(detailMail) lay ra chi tiet thu va danh dau da doc: {}", id);
+        EmailLog emailLog = null;
         try {
             Long numericId = Long.parseLong(id);
+            emailLog = emailLogRepository.findById(numericId).orElse(null);
             emailLogRepository.markAsReadByIds(List.of(numericId));
         } catch (NumberFormatException e) {
+            emailLog = emailLogRepository.findByMessageUuid(id).orElse(null);
             emailLogRepository.markAsReadByUuids(List.of(id));
         } catch (Exception e) {
             log.warn("Khong the danh dau da doc cho thu {}: {}", id, e.getMessage());
         }
+
+        if (emailLog != null) {
+            // Tự động tìm kiếm và đồng bộ file đính kèm nếu bản ghi chưa có
+            if ((!emailLog.isHasAttachment() || emailLog.getAttachmentName() == null || emailLog.getAttachmentName().trim().isEmpty())
+                    && emailLog.getSender() != null) {
+                List<EmailLog> senderLogs = emailLogRepository.findBySenderOrderByCreatedAtDesc(emailLog.getSender());
+                for (EmailLog sent : senderLogs) {
+                    if (sent.isHasAttachment() && sent.getAttachmentName() != null &&
+                            emailLog.getSubject() != null && emailLog.getSubject().equals(sent.getSubject())) {
+                        emailLog.setHasAttachment(true);
+                        emailLog.setAttachmentName(sent.getAttachmentName());
+                        emailLogRepository.save(emailLog);
+                        break;
+                    }
+                }
+            }
+            Email email = mailFacadeService.convertLogToEmail(emailLog);
+            model.addAttribute("email", email);
+        }
+
         model.addAttribute("currentUser", getSessionUsername(httpSession));
         return "detailMail";
     }
@@ -463,6 +533,23 @@ public class MailController {
             org.springframework.core.io.Resource resource = new UrlResource(filePath.toUri());
 
             if (!resource.exists() || !resource.isReadable()) {
+                String originalPart = safeName.replaceFirst("^\\d+_", "");
+                java.io.File uploadsDir = new java.io.File(System.getProperty("user.dir"), "uploads");
+                java.io.File[] files = uploadsDir.listFiles();
+                if (files != null) {
+                    for (java.io.File f : files) {
+                        String name = f.getName();
+                        if (name.equalsIgnoreCase(safeName) || name.equalsIgnoreCase(originalPart) || name.endsWith("_" + originalPart)) {
+                            filePath = f.toPath();
+                            resource = new UrlResource(filePath.toUri());
+                            safeName = name;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!resource.exists() || !resource.isReadable()) {
                 log.warn("(downloadAttachment) file not found: {}", filePath);
                 return ResponseEntity.notFound().build();
             }
@@ -492,6 +579,23 @@ public class MailController {
             String safeName = Paths.get(filename).getFileName().toString();
             Path filePath = Paths.get(System.getProperty("user.dir"), "uploads", safeName);
             org.springframework.core.io.Resource resource = new UrlResource(filePath.toUri());
+
+            if (!resource.exists() || !resource.isReadable()) {
+                String originalPart = safeName.replaceFirst("^\\d+_", "");
+                java.io.File uploadsDir = new java.io.File(System.getProperty("user.dir"), "uploads");
+                java.io.File[] files = uploadsDir.listFiles();
+                if (files != null) {
+                    for (java.io.File f : files) {
+                        String name = f.getName();
+                        if (name.equalsIgnoreCase(safeName) || name.equalsIgnoreCase(originalPart) || name.endsWith("_" + originalPart)) {
+                            filePath = f.toPath();
+                            resource = new UrlResource(filePath.toUri());
+                            safeName = name;
+                            break;
+                        }
+                    }
+                }
+            }
 
             if (!resource.exists() || !resource.isReadable()) {
                 log.warn("(viewAttachment) file not found: {}", filePath);
@@ -574,6 +678,12 @@ public class MailController {
         } catch (Exception ignored) {}
 
         return MediaType.APPLICATION_OCTET_STREAM_VALUE;
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public String handleMaxSizeException(MaxUploadSizeExceededException exc) {
+        log.warn("(handleMaxSizeException) File upload vuot qua 15MB: {}", exc.getMessage());
+        return "redirect:/send?error=" + urlEncode("Dung lượng tệp đính kèm vượt quá giới hạn tối đa 15 MB! Vui lòng chọn tệp nhỏ hơn để tiết kiệm tài nguyên.");
     }
 }
 

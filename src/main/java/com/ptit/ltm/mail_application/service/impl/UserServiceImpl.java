@@ -21,12 +21,27 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public User registerUser(String username, String password, String fullName, String email, String phone, String address) {
         log.info("Registering user: username={}, email={}", username, email);
+        if (password == null || password.trim().length() < 6) {
+            throw new IllegalArgumentException("Mật khẩu phải có độ dài tối thiểu 6 ký tự!");
+        }
+
         if (userRepository.existsByUsername(username)) {
             throw new IllegalArgumentException("Tên đăng nhập đã tồn tại!");
         }
 
-        if (email != null && !email.trim().isEmpty() && userRepository.existsByEmail(email.trim())) {
-            throw new IllegalArgumentException("Email đã được sử dụng!");
+        // Chuẩn hóa địa chỉ email nội bộ trên hMailServer (@domain1.com)
+        if (email == null || email.trim().isEmpty()) {
+            email = username.trim() + "@domain1.com";
+        } else {
+            email = email.trim();
+            if (!email.toLowerCase().endsWith("@domain1.com")) {
+                String prefix = email.contains("@") ? email.substring(0, email.indexOf("@")) : email;
+                email = prefix + "@domain1.com";
+            }
+        }
+
+        if (userRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException("Địa chỉ email (" + email + ") đã được sử dụng!");
         }
 
         User user = User.builder()
@@ -42,7 +57,7 @@ public class UserServiceImpl implements UserService {
 
         User savedUser = userRepository.save(user);
 
-        // Đồng bộ tạo tài khoản trên hMailServer nếu là email nội bộ (@domain1.com)
+        // Đồng bộ tạo tài khoản trên hMailServer
         syncHMailServerAccount(email, password);
 
         return savedUser;
@@ -64,10 +79,10 @@ public class UserServiceImpl implements UserService {
                 "  if ($acc -eq $null) { " +
                 "    $acc = $d.Accounts.Add(); " +
                 "    $acc.Address = '%s'; " +
-                "    $acc.Password = '%s'; " +
-                "    $acc.Active = $true; " +
-                "    $acc.Save(); " +
                 "  } " +
+                "  $acc.Password = '%s'; " +
+                "  $acc.Active = $true; " +
+                "  $acc.Save(); " +
                 "} }", domain, email, email, password
             );
 

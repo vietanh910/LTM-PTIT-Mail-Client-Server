@@ -2,15 +2,16 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <title>Đăng ký tài khoản</title>
+    <title>Đăng ký tài khoản - Mail Application</title>
+    <link rel="icon" type="image/png" href="/image/logo.png" />
     <script src="/js/lib/tailwind/tailwind.js"></script>
     <script src="/js/lib/tailwind/tailwind.config.js"></script>
   </head>
   <body>
     <div class="bg-gray-50 min-h-screen py-10">
       <div class="flex flex-col items-center justify-center px-6 py-8 mx-auto min-h-screen lg:py-0">
-        <a href="#" class="flex items-center mb-6 text-2xl font-semibold text-gray-900">
-          <img class="w-8 h-8 mr-2" src="/image/logo.svg" alt="logo" />
+        <a href="#" class="flex items-center mb-6 text-2xl font-bold text-blue-700">
+          <img class="w-10 h-10 mr-2.5 object-contain rounded-full shadow-sm" src="/image/logo.png" alt="logo" />
           Mail Application
         </a>
 
@@ -47,25 +48,35 @@
 
               <!-- Email -->
               <div>
-                <label for="email" class="block mb-1.5 text-sm font-medium text-gray-900">
-                  Email (địa chỉ hộp thư) <span class="text-red-500">*</span>
+                <label for="emailPrefix" class="block mb-1.5 text-sm font-medium text-gray-900">
+                  Địa chỉ hộp thư <span class="text-red-500">*</span>
                 </label>
-                <input type="email" name="email" id="email"
-                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                       placeholder="nguyenvana@domain1.com" required />
-                <p id="emailHint" class="mt-1 text-xs text-gray-500">Email dùng để đăng nhập và nhận thư (ví dụ: ten@domain1.com)</p>
+                <div class="flex">
+                  <input type="text" id="emailPrefix"
+                         class="rounded-none rounded-l-lg bg-gray-50 border border-gray-300 text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                         placeholder="dfhwidhfked" required pattern="[a-zA-Z0-9._\-]+"
+                         title="Chỉ dùng chữ cái, số, dấu chấm và gạch dưới" />
+                  <span class="inline-flex items-center px-3.5 text-sm font-semibold text-blue-800 bg-blue-50 border border-l-0 border-blue-200 rounded-r-lg whitespace-nowrap">
+                    @domain1.com
+                  </span>
+                </div>
+                <input type="hidden" name="email" id="emailHidden" />
+                <p id="emailHint" class="mt-1 text-xs text-gray-500">Hộp thư nội bộ dùng để đăng nhập, gửi và nhận thư</p>
               </div>
 
               <!-- Mật khẩu -->
               <div>
                 <label for="password" class="block mb-1.5 text-sm font-medium text-gray-900">
                   Mật khẩu <span class="text-red-500">*</span>
+                  <span class="text-xs font-normal text-gray-500">(tối thiểu 6 ký tự)</span>
                 </label>
                 <div class="relative">
                   <input type="password" name="matkhau" id="password"
                          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 pr-10"
                          placeholder="••••••••" required minlength="6"
-                         oninput="checkPasswordStrength(this.value)" />
+                         oninput="onPasswordInput(this.value)"
+                         onkeyup="onPasswordInput(this.value)"
+                         onchange="onPasswordInput(this.value)" />
                   <button type="button" onclick="togglePassword('password', 'eyeIcon1')"
                           class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-700">
                     <svg id="eyeIcon1" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -74,6 +85,10 @@
                     </svg>
                   </button>
                 </div>
+                <!-- Thông báo yêu cầu tối thiểu 6 ký tự -->
+                <p id="passwordHint" class="mt-1.5 text-xs text-red-600 font-medium">
+                  ⚠️ Mật khẩu phải dài tối thiểu 6 ký tự (hiện có: 0/6 ký tự)
+                </p>
                 <!-- Thanh độ mạnh mật khẩu -->
                 <div id="strengthBar" class="mt-1.5 h-1 w-full bg-gray-200 rounded-full hidden">
                   <div id="strengthFill" class="h-1 rounded-full transition-all duration-300"></div>
@@ -90,7 +105,9 @@
                   <input type="password" name="confirmPassword" id="confirmPassword"
                          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 pr-10"
                          placeholder="••••••••" required
-                         oninput="checkConfirmPassword()" />
+                         oninput="checkConfirmPassword()"
+                         onkeyup="checkConfirmPassword()"
+                         onchange="checkConfirmPassword()" />
                   <button type="button" onclick="togglePassword('confirmPassword', 'eyeIcon2')"
                           class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-700">
                     <svg id="eyeIcon2" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -133,9 +150,9 @@
                        placeholder="Hà Nội" />
               </div>
 
-              <!-- Nút đăng ký -->
-              <button type="submit" id="btnSubmit"
-                      class="w-full text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition">
+              <!-- Nút đăng ký (mặc định bị chặn nếu mật khẩu dưới 6 ký tự) -->
+              <button type="submit" id="btnSubmit" disabled
+                      class="w-full text-white bg-gray-400 cursor-not-allowed font-medium rounded-lg text-sm px-5 py-2.5 text-center transition opacity-60">
                 Đăng ký
               </button>
 
@@ -159,6 +176,48 @@
         } else {
           input.type = 'password';
           icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>';
+        }
+      }
+
+      function onPasswordInput(val) {
+        checkPasswordStrength(val);
+        checkPasswordValidation();
+        // Cập nhật lại thông báo so khớp nếu đã nhập ô xác nhận mật khẩu
+        const cpw = document.getElementById('confirmPassword').value;
+        if (cpw) checkConfirmPassword();
+      }
+
+      function checkPasswordValidation() {
+        const pw = (document.getElementById('password').value || '').trim();
+        const btn = document.getElementById('btnSubmit');
+        const hint = document.getElementById('passwordHint');
+        const pwInput = document.getElementById('password');
+
+        // Yêu cầu mật khẩu dài tối thiểu 6 ký tự
+        if (pw.length < 6) {
+          hint.textContent = '⚠️ Mật khẩu phải dài tối thiểu 6 ký tự (hiện có: ' + pw.length + '/6 ký tự)';
+          hint.className = 'mt-1.5 text-xs text-red-600 font-medium';
+          if (pw.length > 0) {
+            pwInput.classList.add('border-red-500', 'focus:ring-red-500', 'focus:border-red-500');
+            pwInput.classList.remove('border-green-500', 'focus:ring-green-500', 'focus:border-green-500');
+          } else {
+            pwInput.classList.remove('border-red-500', 'border-green-500', 'focus:ring-red-500', 'focus:ring-green-500');
+          }
+
+          // Chặn nút đăng ký
+          btn.disabled = true;
+          btn.className = 'w-full text-white bg-gray-400 cursor-not-allowed font-medium rounded-lg text-sm px-5 py-2.5 text-center transition opacity-60 shadow-none';
+          return false;
+        } else {
+          hint.textContent = '✔ Độ dài mật khẩu hợp lệ (' + pw.length + ' ký tự)';
+          hint.className = 'mt-1.5 text-xs text-green-600 font-medium';
+          pwInput.classList.remove('border-red-500', 'focus:ring-red-500', 'focus:border-red-500');
+          pwInput.classList.add('border-green-500', 'focus:ring-green-500', 'focus:border-green-500');
+
+          // Mật khẩu >= 6 ký tự -> Mở chặn nút đăng ký
+          btn.disabled = false;
+          btn.className = 'w-full text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition cursor-pointer shadow-sm';
+          return true;
         }
       }
 
@@ -187,39 +246,84 @@
       }
 
       function checkConfirmPassword() {
-        const pw = document.getElementById('password').value;
-        const cpw = document.getElementById('confirmPassword').value;
+        const pw = (document.getElementById('password').value || '').trim();
+        const cpw = (document.getElementById('confirmPassword').value || '').trim();
         const msg = document.getElementById('confirmMsg');
-        if (!cpw) { msg.classList.add('hidden'); return; }
+        const cpwInput = document.getElementById('confirmPassword');
+        if (!cpw) { 
+          msg.classList.add('hidden'); 
+          cpwInput.classList.remove('border-red-500', 'border-green-500');
+          return; 
+        }
         msg.classList.remove('hidden');
         if (pw === cpw) {
           msg.textContent = '✔ Mật khẩu khớp';
-          msg.className = 'mt-1 text-xs text-green-600';
+          msg.className = 'mt-1 text-xs text-green-600 font-medium';
+          cpwInput.classList.remove('border-red-500', 'focus:ring-red-500');
+          cpwInput.classList.add('border-green-500', 'focus:ring-green-500');
         } else {
           msg.textContent = '✘ Mật khẩu không khớp';
-          msg.className = 'mt-1 text-xs text-red-600';
+          msg.className = 'mt-1 text-xs text-red-600 font-medium';
+          cpwInput.classList.remove('border-green-500', 'focus:ring-green-500');
+          cpwInput.classList.add('border-red-500', 'focus:ring-red-500');
+        }
+      }
+
+      function syncEmailHidden() {
+        const prefixInput = document.getElementById('emailPrefix');
+        const hiddenInput = document.getElementById('emailHidden');
+        if (prefixInput && hiddenInput) {
+          const val = prefixInput.value.trim().replace(/@.*$/, '');
+          hiddenInput.value = val ? (val + '@domain1.com') : '';
         }
       }
 
       function validateForm() {
-        const pw = document.getElementById('password').value;
-        const cpw = document.getElementById('confirmPassword').value;
+        syncEmailHidden();
+        const prefix = document.getElementById('emailPrefix').value.trim();
+        if (!prefix) {
+          alert('Vui lòng nhập địa chỉ hộp thư!');
+          document.getElementById('emailPrefix').focus();
+          return false;
+        }
+        const pw = (document.getElementById('password').value || '').trim();
+        const cpw = (document.getElementById('confirmPassword').value || '').trim();
+        if (pw.length < 6) {
+          alert('Mật khẩu phải có độ dài tối thiểu 6 ký tự (hiện có: ' + pw.length + '/6 ký tự)!');
+          document.getElementById('password').focus();
+          return false;
+        }
         if (pw !== cpw) {
           alert('Mật khẩu nhập lại không khớp! Vui lòng kiểm tra lại.');
           document.getElementById('confirmPassword').focus();
           return false;
         }
-        if (pw.length < 6) {
-          alert('Mật khẩu phải có ít nhất 6 ký tự!');
-          document.getElementById('password').focus();
-          return false;
-        }
         const btn = document.getElementById('btnSubmit');
         btn.disabled = true;
         btn.textContent = 'Đang đăng ký...';
-        btn.classList.add('opacity-75', 'cursor-not-allowed');
+        btn.className = 'w-full text-white bg-blue-400 cursor-not-allowed font-medium rounded-lg text-sm px-5 py-2.5 text-center transition opacity-75';
         return true;
       }
+
+      document.addEventListener('DOMContentLoaded', function() {
+        checkPasswordValidation();
+
+        const usernameInput = document.getElementById('username');
+        const emailPrefixInput = document.getElementById('emailPrefix');
+
+        if (usernameInput && emailPrefixInput) {
+          usernameInput.addEventListener('input', function() {
+            if (!emailPrefixInput.dataset.userEdited) {
+              emailPrefixInput.value = this.value;
+              syncEmailHidden();
+            }
+          });
+          emailPrefixInput.addEventListener('input', function() {
+            this.dataset.userEdited = "true";
+            syncEmailHidden();
+          });
+        }
+      });
     </script>
   </body>
 </html>

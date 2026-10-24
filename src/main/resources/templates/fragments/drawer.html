@@ -51,27 +51,40 @@
         </li>
         <li>
             <a
-                    class="flex items-center px-5 py-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group nav-link"
+                    class="flex items-center justify-between px-5 py-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group nav-link"
                     href="/"
             >
-              <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
-              <g
-                id="SVGRepo_tracerCarrier"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ></g>
-              <g id="SVGRepo_iconCarrier">
-                <path
-                  d="M14.5 9.50012H9.5M3.02832 10.0001L10.2246 14.8167C10.8661 15.2444 11.1869 15.4582 11.5336 15.5413C11.8399 15.6147 12.1593 15.6147 12.4657 15.5413C12.8124 15.4582 13.1332 15.2444 13.7747 14.8167L20.971 10.0001M10.2981 4.06892L4.49814 7.71139C3.95121 8.05487 3.67775 8.2266 3.4794 8.45876C3.30385 8.66424 3.17176 8.90317 3.09111 9.16112C3 9.45256 3 9.77548 3 10.4213V16.8001C3 17.9202 3 18.4803 3.21799 18.9081C3.40973 19.2844 3.71569 19.5904 4.09202 19.7821C4.51984 20.0001 5.0799 20.0001 6.2 20.0001H17.8C18.9201 20.0001 19.4802 20.0001 19.908 19.7821C20.2843 19.5904 20.5903 19.2844 20.782 18.9081C21 18.4803 21 17.9202 21 16.8001V10.4213C21 9.77548 21 9.45256 20.9089 9.16112C20.8282 8.90317 20.6962 8.66424 20.5206 8.45876C20.3223 8.2266 20.0488 8.05487 19.5019 7.71139L13.7019 4.06891C13.0846 3.68129 12.776 3.48747 12.4449 3.41192C12.152 3.34512 11.848 3.34512 11.5551 3.41192C11.224 3.48747 10.9154 3.68129 10.2981 4.06892Z"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                ></path>
-              </g>
-            </svg>
-            <span class="ml-3">Hộp thư đến</span>
-          </a>
+              <div class="flex items-center">
+                <svg
+                        class="w-5 h-5 flex-shrink-0"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                >
+                  <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                  <g
+                    id="SVGRepo_tracerCarrier"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  ></g>
+                  <g id="SVGRepo_iconCarrier">
+                    <path
+                      d="M14.5 9.50012H9.5M3.02832 10.0001L10.2246 14.8167C10.8661 15.2444 11.1869 15.4582 11.5336 15.5413C11.8399 15.6147 12.1593 15.6147 12.4657 15.5413C12.8124 15.4582 13.1332 15.2444 13.7747 14.8167L20.971 10.0001M10.2981 4.06892L4.49814 7.71139C3.95121 8.05487 3.67775 8.2266 3.4794 8.45876C3.30385 8.66424 3.17176 8.90317 3.09111 9.16112C3 9.45256 3 9.77548 3 10.4213V16.8001C3 17.9202 3 18.4803 3.21799 18.9081C3.40973 19.2844 3.71569 19.5904 4.09202 19.7821C4.51984 20.0001 5.0799 20.0001 6.2 20.0001H17.8C18.9201 20.0001 19.4802 20.0001 19.908 19.7821C20.2843 19.5904 20.5903 19.2844 20.782 18.9081C21 18.4803 21 17.9202 21 16.8001V10.4213C21 9.77548 21 9.45256 20.9089 9.16112C20.8282 8.90317 20.6962 8.66424 20.5206 8.45876C20.3223 8.2266 20.0488 8.05487 19.5019 7.71139L13.7019 4.06891C13.0846 3.68129 12.776 3.48747 12.4449 3.41192C12.152 3.34512 11.848 3.34512 11.5551 3.41192C11.224 3.48747 10.9154 3.68129 10.2981 4.06892Z"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    ></path>
+                  </g>
+                </svg>
+                <span class="ml-3 flex items-center">
+                  <span>Hộp thư đến</span>
+                  <span id="drawerUnreadCountText"
+                        th:text="${unreadInboxCount != null and unreadInboxCount > 0} ? '(' + ${unreadInboxCount} + ')' : ''"
+                        th:class="${unreadInboxCount != null and unreadInboxCount > 0} ? 'text-blue-600 font-bold ml-1' : 'hidden text-blue-600 font-bold ml-1'"></span>
+                </span>
+              </div>
+            </a>
         </li>
         <li>
             <a
@@ -148,7 +161,153 @@
                     link.classList.add("text-primary-600");
                 }
             });
+
+            // --- Tự động tải số lượng thư chưa đọc trong Hộp thư đến (Real-time Polling) ---
+            initRealtimeUnreadTracker();
         });
+
+        if (document.readyState !== 'loading') {
+            initRealtimeUnreadTracker();
+        }
+
+        function initRealtimeUnreadTracker() {
+            if (window._unreadTrackerStarted) return;
+            window._unreadTrackerStarted = true;
+
+            var initialText = document.getElementById('drawerUnreadCountText');
+            var previousCount = (initialText && !initialText.classList.contains('hidden'))
+                ? (parseInt(initialText.textContent.replace(/\D/g, ''), 10) || 0)
+                : 0;
+            var previousTotal = -1;
+
+            function updateUI(unreadCount, totalCount) {
+                var num = parseInt(unreadCount, 10) || 0;
+                var total = parseInt(totalCount, 10) || 0;
+
+                // 1. Cập nhật nhãn bên cạnh chữ "Hộp thư đến" trong menu Drawer: "Hộp thư đến (X)"
+                var drawerText = document.getElementById('drawerUnreadCountText');
+                if (drawerText) {
+                    if (num > 0) {
+                        drawerText.textContent = '(' + num + ')';
+                        drawerText.classList.remove('hidden');
+                    } else {
+                        drawerText.textContent = '';
+                        drawerText.classList.add('hidden');
+                    }
+                }
+
+                // 2. Cập nhật tiêu đề trên trang Home nếu đang ở Hộp thư đến
+                var homeText = document.getElementById('homeUnreadInboxCount');
+                if (homeText) {
+                    if (num > 0) {
+                        homeText.textContent = '(' + num + ')';
+                        homeText.classList.remove('hidden');
+                    } else {
+                        homeText.textContent = '';
+                        homeText.classList.add('hidden');
+                    }
+                }
+
+                // 3. Cập nhật Tiêu đề tab trình duyệt
+                try {
+                    var baseTitle = document.title.replace(/^\(\d+\)\s*/, '');
+                    if (num > 0) {
+                        document.title = '(' + num + ') ' + baseTitle;
+                    } else {
+                        document.title = baseTitle;
+                    }
+                } catch (e) {}
+
+                // 4. Nếu có thư mới đến (số chưa đọc tăng HOẶC tổng số thư tăng):
+                var hasNewMail = (previousCount !== -1 && num > previousCount) ||
+                                 (previousTotal !== -1 && total > previousTotal);
+
+                if (hasNewMail) {
+                    var diff = Math.max(num - previousCount, total - previousTotal, 1);
+                    previousCount = num;
+                    previousTotal = total;
+                    var currentPath = window.location.pathname;
+
+                    // Nếu đang ở trang Hộp thư đến (/ hoặc /home):
+                    // -> TỰ ĐỘNG CẬP NHẬT LUÔN (tải lại danh sách thư) mà không cần người dùng phải xác nhận!
+                    var isInbox = (currentPath === '/' || currentPath === '/home' || currentPath === '');
+                    if (isInbox) {
+                        var hasSelected = document.querySelectorAll('input.mail-checkbox:checked, input#selectAll:checked').length > 0;
+                        if (!hasSelected) {
+                            window.location.reload();
+                            return;
+                        }
+                    }
+
+                    // Nếu đang ở trang khác (hoặc đang tích chọn thư): hiển thị toast thông báo
+                    showNewMailNotification(diff);
+                    return;
+                }
+                previousCount = num;
+                previousTotal = total;
+            }
+
+            function showNewMailNotification(newMailsCount) {
+                var toast = document.getElementById('realtimeNewMailToast');
+                if (!toast) {
+                    toast = document.createElement('div');
+                    toast.id = 'realtimeNewMailToast';
+                    toast.className = 'fixed bottom-5 right-5 z-50 flex items-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl shadow-2xl cursor-pointer transition transform hover:scale-105 duration-200 border border-blue-400';
+                    toast.onclick = function() { window.location.href = '/'; };
+                    document.body.appendChild(toast);
+                }
+                var countText = newMailsCount > 1 ? (newMailsCount + ' thư mới') : '1 thư mới';
+                toast.innerHTML = 
+                    '<div class="flex items-center space-x-3">' +
+                        '<div class="p-2 bg-blue-500 rounded-lg">' +
+                            '<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+                                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>' +
+                            '</svg>' +
+                        '</div>' +
+                        '<div>' +
+                            '<p class="font-bold text-sm">Có ' + countText + ' trong Hộp thư đến!</p>' +
+                            '<p class="text-xs text-blue-100">Nhấn vào đây để xem ngay</p>' +
+                        '</div>' +
+                    '</div>';
+                toast.classList.remove('hidden');
+
+                setTimeout(function() {
+                    if (toast && !toast.matches(':hover')) {
+                        toast.classList.add('hidden');
+                    }
+                }, 8000);
+            }
+
+            function checkUnreadCount() {
+                fetch('/api/unread-count')
+                    .then(function(res) {
+                        if (res.ok) return res.json();
+                        return null;
+                    })
+                    .then(function(data) {
+                        if (data && typeof data.unreadCount !== 'undefined') {
+                            updateUI(data.unreadCount, data.totalCount);
+                        }
+                    })
+                    .catch(function(err) {
+                        // Bỏ qua lỗi kết nối tạm thời
+                    });
+            }
+
+            // Kiểm tra ngay lập tức lần đầu
+            checkUnreadCount();
+
+            // Tự động kiểm tra định kỳ mỗi 3 giây
+            setInterval(checkUnreadCount, 3000);
+
+            // Kiểm tra ngay lập tức khi người dùng chuyển lại vào tab trình duyệt
+            document.addEventListener('visibilitychange', function() {
+                if (!document.hidden) {
+                    checkUnreadCount();
+                }
+            });
+            window.addEventListener('focus', checkUnreadCount);
+        }
     </script>
 </div>
 </body>

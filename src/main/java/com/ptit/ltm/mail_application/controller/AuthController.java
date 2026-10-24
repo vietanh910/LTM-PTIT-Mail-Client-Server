@@ -49,7 +49,7 @@ public class AuthController {
       String fullEmail = loginRequest.getUsername();
       if (!fullEmail.contains("@")) {
         Optional<User> userOpt = userService.findByUsername(loginRequest.getUsername());
-        if (userOpt.isPresent() && userOpt.get().getEmail() != null) {
+        if (userOpt.isPresent() && userOpt.get().getEmail() != null && userOpt.get().getEmail().toLowerCase().endsWith("@domain1.com")) {
           fullEmail = userOpt.get().getEmail();
         } else {
           fullEmail = loginRequest.getUsername() + "@domain1.com";

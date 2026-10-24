@@ -18,7 +18,8 @@ public class MailApplicationConfiguration {
 
     public Properties sendMailProperties(SessionMail sessionMail) {
         Properties props = new Properties();
-        if (sessionMail.getUsername().contains("gmail")) {
+        String user = sessionMail.getUsername() != null ? sessionMail.getUsername().toLowerCase() : "";
+        if (user.endsWith("@gmail.com")) {
             props.put("mail.smtp.host", "smtp.gmail.com");
             props.put("mail.smtp.socketFactory.port", "465");
             props.put("mail.smtp.socketFactory.class",
@@ -26,7 +27,7 @@ public class MailApplicationConfiguration {
             props.put("mail.smtp.ssl.enable", true);
             props.put("mail.smtp.auth", "true");
             props.put("mail.smtp.port", "465");
-        } else if (sessionMail.getUsername().contains("ptit")) {
+        } else if (user.endsWith("@ptit.edu.vn") || user.endsWith("@stu.ptit.edu.vn")) {
             props.put("mail.smtp.host", "smtp.office365.com");
             props.put("mail.smtp.socketFactory.port", "587");
             props.put("mail.smtp.socketFactory.class",
@@ -42,21 +43,23 @@ public class MailApplicationConfiguration {
             props.put("mail.smtp.starttls.enable", "false");
             props.put("mail.smtp.ssl.enable", "false");
             props.put("mail.smtp.ssl.trust", "127.0.0.1");
-            props.put("mail.smtp.connectiontimeout", "5000");
-            props.put("mail.smtp.timeout", "5000");
+            props.put("mail.smtp.connectiontimeout", "30000");
+            props.put("mail.smtp.timeout", "60000");
+            props.put("mail.smtp.writetimeout", "60000");
         }
         return props;
     }
 
     public Properties receiveMailProperties(SessionMail sessionMail) {
         Properties properties = new Properties();
+        String user = sessionMail.getUsername() != null ? sessionMail.getUsername().toLowerCase() : "";
 
-        if (sessionMail.getUsername().contains("gmail")) {
+        if (user.endsWith("@gmail.com")) {
             properties.put("mail.imap.host", "imap.gmail.com");
             properties.put("mail.store.protocol", "imaps");
             properties.put("mail.imap.socketFactory.class",
                     "javax.net.ssl.SSLSocketFactory");
-        } else if (sessionMail.getUsername().contains("ptit")) {
+        } else if (user.endsWith("@ptit.edu.vn") || user.endsWith("@stu.ptit.edu.vn")) {
             properties.put("mail.imap.host", "outlook.office365.com");
             properties.put("mail.store.protocol", "imaps");
             properties.put("mail.imap.socketFactory.class",
@@ -65,6 +68,8 @@ public class MailApplicationConfiguration {
         } else {
             properties.put("mail.imap.host", "127.0.0.1");
         }
+        properties.put("mail.imap.connectiontimeout", "30000");
+        properties.put("mail.imap.timeout", "60000");
         return properties;
     }
 

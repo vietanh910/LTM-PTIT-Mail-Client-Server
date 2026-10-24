@@ -19,10 +19,25 @@ public interface EmailLogRepository extends JpaRepository<EmailLog, Long> {
     List<EmailLog> findBySenderOrderByCreatedAtDesc(String sender);
     List<EmailLog> findByRecipientOrderByCreatedAtDesc(String recipient);
     List<EmailLog> findByMailTypeOrderByCreatedAtDesc(MailType mailType);
+    java.util.Optional<EmailLog> findByMessageUuid(String messageUuid);
 
     // --- Queries lọc chưa bị xóa ---
     List<EmailLog> findByRecipientAndDeletedFalseOrderByCreatedAtDesc(String recipient);
     List<EmailLog> findBySenderAndDeletedFalseOrderByCreatedAtDesc(String sender);
+
+    // --- Đếm số thư chưa đọc trong Hộp thư đến ---
+    @Query("SELECT COUNT(e) FROM EmailLog e WHERE " +
+           "(e.recipient = :recipient OR (:recipient LIKE '%@%' AND e.recipient = SUBSTRING(:recipient, 1, LOCATE('@', :recipient) - 1))) " +
+           "AND e.mailType = com.ptit.ltm.mail_application.entity.MailType.INBOX " +
+           "AND e.read = false AND e.deleted = false AND (e.spam = false OR e.spam IS NULL)")
+    long countUnreadInbox(@Param("recipient") String recipient);
+
+    // --- Đếm tổng số thư trong Hộp thư đến ---
+    @Query("SELECT COUNT(e) FROM EmailLog e WHERE " +
+           "(e.recipient = :recipient OR (:recipient LIKE '%@%' AND e.recipient = SUBSTRING(:recipient, 1, LOCATE('@', :recipient) - 1))) " +
+           "AND e.mailType = com.ptit.ltm.mail_application.entity.MailType.INBOX " +
+           "AND e.deleted = false")
+    long countTotalInbox(@Param("recipient") String recipient);
 
     // --- Thùng rác: thư bị xóa của người dùng hiện tại ---
     @Query("SELECT e FROM EmailLog e WHERE e.deleted = true AND (" +

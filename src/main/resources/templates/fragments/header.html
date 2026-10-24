@@ -10,9 +10,9 @@
     <nav class="bg-white border-gray-200 dark:bg-gray-900" th:fragment="header">
       <div class="flex flex-wrap items-center mx-auto p-4">
         <a href="/" class="flex items-center">
-          <img src="/image/logo.svg" class="h-8 mr-3" alt="Mail Logo" />
+          <img src="/image/logo.png" class="h-9 w-9 mr-3 object-contain rounded-full shadow-sm" alt="Mail Logo" />
           <span
-            class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white"
+            class="self-center text-2xl font-bold whitespace-nowrap text-blue-700 dark:text-white"
             >Mail Application</span
           >
         </a>
@@ -93,30 +93,70 @@
         // ── User dropdown toggle ──
         const button = document.querySelector("#user-menu-button");
         const menu = document.querySelector("#user-dropdown");
-        button.onclick = () => {
-          menu.classList.toggle("hidden");
-        };
+        if (button && menu) {
+          button.onclick = (e) => {
+            e.stopPropagation();
+            menu.classList.toggle("hidden");
+          };
+          document.addEventListener("click", (e) => {
+            if (!button.contains(e.target) && !menu.contains(e.target)) {
+              menu.classList.add("hidden");
+            }
+          });
+        }
 
-        // ── Tìm kiếm real-time trong bảng email ──
+        // ── Hàm loại bỏ dấu tiếng Việt chuẩn quốc tế ──
+        function removeVietnameseTones(str) {
+          if (!str) return "";
+          return str
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/đ/g, "d")
+            .replace(/Đ/g, "d")
+            .toLowerCase()
+            .trim();
+        }
+
+        // ── Tìm kiếm real-time trong bảng email (có dấu & không dấu cho kết quả như nhau) ──
         document.addEventListener("DOMContentLoaded", function () {
           const searchInput = document.getElementById("search-navbar");
           const countEl     = document.getElementById("search-count");
           if (!searchInput) return;
 
-          searchInput.addEventListener("keyup", function () {
-            const keyword = searchInput.value.trim().toLowerCase();
-            // Lấy tất cả hàng trong bảng email (tbody tr)
-            const rows = document.querySelectorAll("tbody tr");
+          function executeSearch() {
+            const rawVal = searchInput.value || "";
+            const keyword = removeVietnameseTones(rawVal);
+            const terms = keyword.split(/\s+/).filter(t => t.length > 0);
+
+            const rows = document.querySelectorAll("tbody tr.mail-row");
+            const emptyNoticeRow = document.querySelector("tbody tr:not(.mail-row):not(#no-search-result)");
+            const pagContainer = document.getElementById("pagination-container");
+            const tbody = document.querySelector("tbody");
             let visibleCount = 0;
 
-            rows.forEach(function (row) {
-              // Bỏ qua hàng "Không có thư nào"
-              if (row.querySelector("td[colspan]")) {
-                row.style.display = keyword === "" ? "" : "none";
-                return;
+            if (keyword === "") {
+              // Khôi phục trạng thái phân trang ban đầu khi xóa trắng ô tìm kiếm
+              if (pagContainer) pagContainer.style.display = "";
+              if (emptyNoticeRow) emptyNoticeRow.style.display = "";
+              if (typeof renderPage === "function") {
+                renderPage();
+              } else {
+                rows.forEach(r => r.style.display = "");
               }
-              const text = row.innerText.toLowerCase();
-              if (keyword === "" || text.includes(keyword)) {
+              if (countEl) countEl.classList.add("hidden");
+              const noResult = document.getElementById("no-search-result");
+              if (noResult) noResult.style.display = "none";
+              return;
+            }
+
+            // Đang tìm kiếm: tạm ẩn phân trang để hiển thị tất cả các kết quả khớp
+            if (pagContainer) pagContainer.style.display = "none";
+            if (emptyNoticeRow) emptyNoticeRow.style.display = "none";
+
+            rows.forEach(function (row) {
+              const text = removeVietnameseTones(row.innerText);
+              const isMatch = text.includes(keyword) || (terms.length > 0 && terms.every(t => text.includes(t)));
+              if (isMatch) {
                 row.style.display = "";
                 visibleCount++;
               } else {
@@ -124,20 +164,27 @@
               }
             });
 
-            // Hiện số kết quả
-            if (keyword !== "" && rows.length > 0) {
+            // Hiển thị số lượng kết quả
+            if (countEl) {
               countEl.textContent = visibleCount + " kết quả";
               countEl.classList.remove("hidden");
-            } else {
-              countEl.classList.add("hidden");
             }
 
-            // Hiện thông báo "không tìm thấy" nếu cần
-            const noResult = document.getElementById("no-search-result");
-            if (noResult) {
-              noResult.style.display = (keyword !== "" && visibleCount === 0) ? "" : "none";
+            // Thông báo nếu không tìm thấy kết quả nào
+            let noResult = document.getElementById("no-search-result");
+            if (!noResult && tbody) {
+              noResult = document.createElement("tr");
+              noResult.id = "no-search-result";
+              noResult.innerHTML = '<td colspan="5" class="px-6 py-8 text-center text-gray-400">🔍 Không tìm thấy thư nào khớp với từ khóa tìm kiếm.</td>';
+              tbody.appendChild(noResult);
             }
-          });
+            if (noResult) {
+              noResult.style.display = (visibleCount === 0) ? "" : "none";
+            }
+          }
+
+          searchInput.addEventListener("input", executeSearch);
+          searchInput.addEventListener("keyup", executeSearch);
         });
       </script>
     </nav>

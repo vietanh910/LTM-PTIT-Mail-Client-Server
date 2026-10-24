@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8"/>
-    <title>Tạo thư mới</title>
+    <title>Gửi thư hàng loạt</title>
+    <link rel="icon" type="image/png" href="/image/logo.png" />
     <script src="/js/lib/tailwind/tailwind.js"></script>
     <script src="/js/lib/tailwind/tailwind.config.js"></script>
 </head>
@@ -11,8 +12,9 @@
 <div class="flex">
     <div th:replace="~{fragments/drawer :: drawer}">...</div>
     <div class="min-h-screen rounded-lg flex flex-col flex-1 bg-gray-50 p-10">
-        <form action="/multi_send" enctype="multipart/form-data" method="post">
-            <input id="input" name="file" type="file"/>
+        <form action="/multi_send" enctype="multipart/form-data" method="post" onsubmit="return validateMultiSendFile()">
+            <label class="block mb-2 text-sm font-medium text-gray-900" for="input">Chọn file danh sách (Excel .xlsx, tối đa 15 MB):</label>
+            <input class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none mb-4" id="input" name="file" type="file" onchange="checkMultiFileSize(this)"/>
             <div class="flex justify-center">
                 <button
                         class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
@@ -24,5 +26,32 @@
         </form>
     </div>
 </div>
+<script>
+function checkMultiFileSize(input) {
+    if (input.files && input.files.length > 0) {
+        const file = input.files[0];
+        const maxAllowed = 15 * 1024 * 1024; // 15MB
+        if (file.size > maxAllowed) {
+            alert('File danh sách vượt quá 15 MB. Vui lòng chọn file nhỏ hơn hoặc bằng 15 MB để tránh lãng phí tài nguyên hệ thống.');
+            input.value = '';
+            return false;
+        }
+    }
+}
+function validateMultiSendFile() {
+    const input = document.getElementById('input');
+    if (!input.files || input.files.length === 0) {
+        alert('Vui lòng chọn file danh sách Excel!');
+        return false;
+    }
+    const file = input.files[0];
+    const maxAllowed = 15 * 1024 * 1024;
+    if (file.size > maxAllowed) {
+        alert('File danh sách vượt quá 15 MB. Vui lòng chọn file nhỏ hơn hoặc bằng 15 MB.');
+        return false;
+    }
+    return true;
+}
+</script>
 </body>
 </html>

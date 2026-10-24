@@ -1,6 +1,11 @@
 server:
   port: 8080
+  tomcat:
+    max-http-form-post-size: 25MB
+    max-swallow-size: 25MB
   servlet:
+    session:
+      tracking-modes: cookie
     encoding:
       charset: UTF-8
       force: true
@@ -10,7 +15,7 @@ spring:
   servlet:
     multipart:
       max-file-size: 15MB
-      max-request-size: 30MB
+      max-request-size: 20MB
   thymeleaf:
     encoding: UTF-8
   datasource:
